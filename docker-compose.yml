@@ -1,0 +1,101 @@
+name: auditoria-nfe
+
+# Ambiente local (D-05): todas as portas publicadas só em 127.0.0.1. Segredos vêm do arquivo .env
+# (modelo em .env.example), nunca deste arquivo.
+
+services:
+  api-agente:
+    build:
+      context: .
+      dockerfile: src/Api.Agente/Dockerfile
+    image: auditoria-nfe-api-agente:local
+    container_name: auditoria-nfe-api-agente
+    restart: unless-stopped
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      Seguranca__AutenticacaoHabilitada: "false"
+      ConnectionStrings__MongoDb: mongodb://${MONGO_APP_USERNAME:?Defina MONGO_APP_USERNAME no arquivo .env}:${MONGO_APP_PASSWORD:?Defina MONGO_APP_PASSWORD no arquivo .env}@mongodb:27017/auditoria_agente?authSource=auditoria_agente
+      ConnectionStrings__Consumo: Host=postgres;Port=5432;Database=auditoria_agente;Username=${POSTGRES_APP_USER:?Defina POSTGRES_APP_USER no arquivo .env};Password=${POSTGRES_APP_PASSWORD:?Defina POSTGRES_APP_PASSWORD no arquivo .env}
+      Persistencia__AplicarMigracoes: "true"
+      Aprovacao__Diretorio: /app/data/aprovacoes
+      Ia__Provedor: ${Ia__Provedor:-Simulado}
+      OpenAI__ApiKey: ${OpenAI__ApiKey:-}
+      OpenAI__Modelo: ${OpenAI__Modelo:-}
+      Mcp__Habilitado: ${Mcp__Habilitado:-false}
+      A2A__UrlPublica: ${A2A__UrlPublica:-http://localhost:5310}
+      Limites__TamanhoTotalBytes: ${Limites__TamanhoTotalBytes:-5242880}
+      Limites__QuantidadeArquivos: ${Limites__QuantidadeArquivos:-20}
+      ContextoUsuario__RetencaoInatividade: ${ContextoUsuario__RetencaoInatividade:-90.00:00:00}
+    ports:
+      - "127.0.0.1:5310:8080"
+    volumes:
+      - ./data/aprovacoes:/app/data/aprovacoes
+    depends_on:
+      mongodb:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+    networks:
+      - auditoria-nfe-net
+
+  mongodb:
+    image: mongo:8.0.32
+    container_name: auditoria-nfe-mongodb
+    restart: unless-stopped
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_INITDB_ROOT_USERNAME:?Defina MONGO_INITDB_ROOT_USERNAME no arquivo .env}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_INITDB_ROOT_PASSWORD:?Defina MONGO_INITDB_ROOT_PASSWORD no arquivo .env}
+      MONGO_APP_USERNAME: ${MONGO_APP_USERNAME:?Defina MONGO_APP_USERNAME no arquivo .env}
+      MONGO_APP_PASSWORD: ${MONGO_APP_PASSWORD:?Defina MONGO_APP_PASSWORD no arquivo .env}
+    ports:
+      - "127.0.0.1:27020:27017"
+    volumes:
+      - mongodb-data:/data/db
+      # Executado apenas na primeira inicialização (volume vazio).
+      - ./infra/mongodb/init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      # Saudável só depois que o script de infra/ criou o último índice, com o usuário da aplicação.
+      test: ["CMD-SHELL", "mongosh --quiet \"mongodb://$${MONGO_APP_USERNAME}:$${MONGO_APP_PASSWORD}@127.0.0.1:27017/auditoria_agente?authSource=auditoria_agente\" --eval \"quit(db.sessoes_agente.getIndexes().some(i => i.name === 'ix_sessoes_agente_chave') ? 0 : 1)\""]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    networks:
+      - auditoria-nfe-net
+
+  postgres:
+    image: pgvector/pgvector:0.8.7-pg17
+    container_name: auditoria-nfe-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: auditoria_agente
+      POSTGRES_USER: ${POSTGRES_USER:?Defina POSTGRES_USER no arquivo .env}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Defina POSTGRES_PASSWORD no arquivo .env}
+      POSTGRES_APP_USER: ${POSTGRES_APP_USER:?Defina POSTGRES_APP_USER no arquivo .env}
+      POSTGRES_APP_PASSWORD: ${POSTGRES_APP_PASSWORD:?Defina POSTGRES_APP_PASSWORD no arquivo .env}
+    ports:
+      - "127.0.0.1:5436:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      # Executado apenas na primeira inicialização (volume vazio).
+      - ./infra/postgres/init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      # Por TCP: o servidor temporário da inicialização só escuta no socket local.
+      test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -U \"$${POSTGRES_USER}\" -d auditoria_agente"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    networks:
+      - auditoria-nfe-net
+
+volumes:
+  mongodb-data:
+    name: auditoria-nfe-mongodb-data
+  postgres-data:
+    name: auditoria-nfe-postgres-data
+
+networks:
+  auditoria-nfe-net:
+    name: auditoria-nfe-net
+    driver: bridge
