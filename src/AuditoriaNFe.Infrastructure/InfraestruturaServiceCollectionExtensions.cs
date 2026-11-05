@@ -1,12 +1,14 @@
 using AuditoriaNFe.Application.Abstracoes;
 using AuditoriaNFe.Application.Configuracao;
 using AuditoriaNFe.Infrastructure.Comum;
+using AuditoriaNFe.Infrastructure.Ia;
 using AuditoriaNFe.Infrastructure.Persistencia.Mongo;
 using AuditoriaNFe.Infrastructure.Persistencia.Postgres;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
 namespace AuditoriaNFe.Infrastructure;
@@ -40,6 +42,26 @@ public static class InfraestruturaServiceCollectionExtensions
             ?? throw new InvalidOperationException($"ConnectionStrings:{ConsumoDbContext.NomeConnectionString} é obrigatória.");
         services.AddDbContextFactory<ConsumoDbContext>((provedor, builder) =>
             ConsumoDbContext.Configurar(builder, connectionString, provedor.GetRequiredService<IOptions<PersistenciaOpcoes>>().Value));
+        return services;
+    }
+
+    /// <summary>
+    /// Cliente de IA com registro de consumo; <paramref name="ambiente"/> restringe o provedor simulado.
+    /// Requer o <c>IMeterFactory</c> registrado pelo host.
+    /// </summary>
+    public static IServiceCollection AdicionarIa(this IServiceCollection services, string ambiente)
+    {
+        services.AddSingleton(provedor => TabelaPrecos.Carregar(
+            Path.Combine(AppContext.BaseDirectory, provedor.GetRequiredService<IOptions<CatalogosOpcoes>>().Value.Precos)));
+        services.AddSingleton<CalculadoraCusto>();
+        services.AddSingleton<GravadorConsumo>();
+        services.AddSingleton(provedor => new FabricaChatClient(
+            provedor.GetRequiredService<IOptions<IaOpcoes>>(),
+            provedor.GetRequiredService<IOptions<OpenAIOpcoes>>(),
+            provedor.GetRequiredService<GravadorConsumo>(),
+            provedor.GetRequiredService<ILoggerFactory>(),
+            ambiente));
+        services.TryAddSingleton(provedor => provedor.GetRequiredService<FabricaChatClient>().Criar());
         return services;
     }
 }
