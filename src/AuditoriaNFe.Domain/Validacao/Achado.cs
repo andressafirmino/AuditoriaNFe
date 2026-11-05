@@ -20,7 +20,7 @@ public sealed class Achado
         string? regraId = null,
         int? versaoRegra = null,
         string? pacoteSchema = null,
-        IEnumerable<Evidencia>? evidencias = null)
+        IReadOnlyList<Evidencia>? evidencias = null)
     {
         if (id == Guid.Empty)
         {

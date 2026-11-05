@@ -22,7 +22,7 @@ public sealed partial class DocumentoNFe
         OrigemDataReferencia origemDataReferencia,
         string pacoteSchema,
         string hashConteudo,
-        IEnumerable<CampoExtraido> dadosExtraidos,
+        IReadOnlyList<CampoExtraido> dadosExtraidos,
         string arquivoOrigem,
         Guid execucaoOrigem)
     {

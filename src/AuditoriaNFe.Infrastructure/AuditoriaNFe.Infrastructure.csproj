@@ -6,6 +6,10 @@
   </ItemGroup>
 
   <ItemGroup>
+    <PackageReference Include="MongoDB.Driver" />
+  </ItemGroup>
+
+  <ItemGroup>
     <Content Include="Schemas\**" CopyToOutputDirectory="PreserveNewest" />
     <Content Include="Catalogos\**" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
