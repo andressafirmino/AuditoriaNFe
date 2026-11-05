@@ -10,6 +10,8 @@ relacionamentos, validações, estados e onde cada uma é persistida. Os nomes s
 **Revisão de 2026-11-04**: identificação do usuário e do chamador por metadados (desvio D-05),
 seleção do pacote de schema pela data de referência, pacote de schema e vigência, regra de conteúdo
 com versão e vigência (catálogo aprovado), contexto do usuário e registro de consumo ampliado.
+Depois da análise de consistência das tarefas: chamadas de ferramentas, trechos consultados e regras
+aplicadas registrados na execução, para a rastreabilidade do NFR-008.
 
 ## Convenções
 
@@ -115,6 +117,8 @@ Processamento de uma solicitação (FR-054, NFR-008).
 | `modelo` | string? | Interno | Modelo OpenAI usado, quando houve chamada |
 | `consumoResumo` | objeto | Interno | Somatório das chamadas (tokens, custo, origem informada/estimada, `registroCompleto`); NULL quando desconhecido |
 | `contextoUsuarioAtualizado` | bool | Interno | `true` quando a etapa 9 gravou o contexto do usuário (FR-057) |
+| `chamadasFerramentas` | lista | Interno | Uma por chamada de ferramenta da IA: `nome`, `iniciadaEm`, `duracaoMs`, `status` (`Sucesso`, `Falha`, `Timeout`, `NaoAutorizada`), `erro?` e `calculoId?`; sem argumentos de texto livre nem valores de documentos (P16, NFR-008) |
+| `trechosConsultados` | lista | Interno | Trechos de manual recuperados na etapa 5: `chunkId`, `documento`, `versao`; vazia com a integração MCP desabilitada (NFR-008) |
 
 **`EtapaExecucao`**: `numero` (1–9), `nome`, `estado` (`Executada`, `Falhou`, `NaoAplicavel`,
 `NaoExecutada`), `justificativa` (obrigatória para `NaoAplicavel` e `NaoExecutada`), `inicioEm`,
@@ -142,6 +146,7 @@ determinísticos entregues). `Falhou` registra as etapas concluídas e as não e
 | `identificacao` | `IdentificacaoDocumento`? | Fiscal | Ver abaixo (FR-007, FR-007a) |
 | `validacaoLayout` | `ValidacaoLayout` | Interno | Ver abaixo (FR-010 a FR-011) |
 | `validacaoConteudo` | `EstadoValidacao` | Interno | `NaoRealizada — layout inválido` quando o layout falhou (FR-015); `NaoRealizada` com motivo em ERR-023 |
+| `regrasAplicadas` | lista | Interno | Uma por regra do catálogo avaliada no documento: `regraId`, `versaoRegra`, `resultado` (`Conforme`, `Divergente`, `NaoAplicavel` com condição ou grupo ausente) (NFR-008, FR-013a) |
 | `documentoId` | GUID? | Interno | Documento gerado ou já existente (duplicado) |
 | `duplicadoDe` | GUID? | Interno | Preenchido quando for duplicata (FR-009) |
 
