@@ -110,7 +110,7 @@ do host, guarda do D-05 e infraestrutura de testes.
 
 ### Infraestrutura de testes
 
-- [ ] T039 [P] Criar os duplos em `tests/AuditoriaNFe.Tests/Duplos/`: `RelogioControlado.cs` e `ChatClientRoteirizado.cs`, que devolve respostas roteirizadas (válidas, inválidas, exceção, tempo esgotado, com e sem `Usage`) (research R-23)
+- [X] T039 [P] Criar os duplos em `tests/AuditoriaNFe.Tests/Duplos/`: `RelogioControlado.cs` e `ChatClientRoteirizado.cs`, que devolve respostas roteirizadas (válidas, inválidas, exceção, tempo esgotado, com e sem `Usage`) (research R-23)
 - [ ] T040 [P] Criar `tests/AuditoriaNFe.Tests/Fixtures/Xml/GeradorNFeSintetica.cs`, que monta NF-e sintéticas (CNPJs fictícios, chave de acesso com DV calculado, modelo, `dhEmi` e `dhRecbto` com deslocamento, itens e totais coerentes, com ou sem `protNFe`, `ds:Signature` sintética apenas estrutural, porque a assinatura não é validada na v1) a partir de um modelo mínimo ajustável por pacote (P17, research R-23)
 - [ ] T041 Criar `tests/AuditoriaNFe.Tests/Integracao/Infra/AmbienteIntegracao.cs`: Testcontainers com `mongo:8.0.32` e `pgvector/pgvector:0.8.7-pg17` executando os scripts de `infra/`, `WebApplicationFactory<Program>` em `Development` com `ChatClientRoteirizado`, `RelogioControlado` e `Aprovacao:Diretorio` temporário (depende de T038, T039)
 - [ ] T042 Criar `tests/AuditoriaNFe.Tests/Integracao/HostTests.cs`: o host em `Production` com `Seguranca:AutenticacaoHabilitada=false` não inicia; `/swagger` e `/openapi/v1.json` não existem fora de `Development`; `/health/ready` responde sem dados (depende de T041)
