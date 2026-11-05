@@ -203,8 +203,23 @@ O adaptador A2A só traduz; a análise é a mesma do canal direto (P18).
 - Tipo `AnaliseComPergunta`, canal `A2A`, uma sessão nova por solicitação (sem continuidade).
 - `idExecucao` e `idSolicitacao` da SOFIA são gravados na execução (`idExecucaoSofia`,
   `idSolicitacaoSofia`); `correlacaoId` = `idSolicitacao`.
-- Retentativa com o mesmo `idSolicitacao` gera nova execução, com os mesmos IDs da SOFIA; as duas
-  ficam registradas, inclusive o consumo de IA (P14).
+- O agente não chama outros agentes nem encaminha a solicitação; roteamento, agregação e síntese são
+  da SOFIA (FR-043i).
+
+### 4.4 Repetição do mesmo `idSolicitacao` (FR-043h)
+
+A SOFIA reutiliza o `idSolicitacao` nas retentativas. A chave de idempotência é o chamador mais o
+`idSolicitacao`:
+
+| Situação da execução original | Resposta |
+| ----------------------------- | -------- |
+| `Concluida` ou `Rejeitada` | O mesmo `ResultadoAnaliseSofia`, montado a partir da execução gravada; sem nova análise, sem consumo de IA e sem atualizar o contexto do usuário |
+| `Recebida` ou `EmProcessamento` | `status: erro`, `erro.codigo = "ERR-026"`; a SOFIA pode repetir depois do tempo máximo da execução (§7) |
+| `Falhou` (por exemplo ERR-016) | Nova execução com os mesmos IDs da SOFIA; as duas ficam registradas, inclusive o consumo de IA (P14) |
+| Qualquer uma, com `idExecucao` ou usuário diferentes | `status: erro`, `erro.codigo = "ERR-007"` |
+
+Solicitações que terminaram em Task `failed` ou foram recusadas pelo validador do adaptador (§6) não
+criam execução; a repetição é tratada como primeira solicitação.
 
 ## 5. Resposta (agente → SOFIA)
 
@@ -334,6 +349,7 @@ Na ordem:
 | Demais violações do contrato (`versaoContrato` diferente de `"1.0"`, campo obrigatório ausente ou vazio, `idDocumento` repetido, limites de texto) | Task `completed`, `status: erro`, `erro.codigo = "ERR-007"` |
 | ERR-002, ERR-003 | Task `completed`, `status: erro` |
 | ERR-025 (armazenamento indisponível) | Task `completed`, `status: erro`; nenhum resultado parcial |
+| ERR-026 (mesmo `idSolicitacao` em andamento) | Task `completed`, `status: erro` (§4.4) |
 | ERR-016 (tempo máximo esgotado) | Task `completed`, `status: erro` |
 | ERR-008 a ERR-012, ERR-023 (por documento) | Task `completed`, `status: parcial` ou `concluido` (§5.3); detalhes nas observações e nos achados |
 | ERR-013, ERR-014, ERR-015 | Task `completed`, `status: parcial`, resultados determinísticos entregues |
@@ -354,7 +370,10 @@ documento, nome do usuário ou detalhe de infraestrutura.
   agente encerra a execução no tempo máximo configurado (`Execucao:TempoMaximo`, inicial 120 s) com
   ERR-016.
 - As Tasks ficam só em memória (`InMemoryTaskStore`), para uma instância; `tasks/get` de uma Task
-  antiga não é contratual.
+  antiga não é contratual. A repetição segura é pelo `idSolicitacao` (§4.4), não pelo `tasks/get`.
+- `tasks/cancel` não é oferecido: a Task só fica visível no estado final, que não é cancelável. Se a
+  SOFIA abandonar a requisição HTTP, a execução é encerrada como `Falhou` com ERR-027, com as etapas
+  registradas (FR-043i), e pode ser repetida com o mesmo `idSolicitacao`.
 
 ## 8. Versionamento
 
@@ -387,3 +406,19 @@ O simulador usa o cliente oficial do perfil v0.3 (`A2A.V0_3`) e só o contrato p
 | Card inacessível | Informa falha de descoberta e não envia solicitação | TS-035a |
 | Documento não suportado (opcional) | Inclui um texto que não é NF-e; exibe `status: parcial` | TS-065 |
 | Contrato inválido (opcional) | Envia `versaoContrato: "2.0"`; exibe `status: erro` com ERR-007 | TS-066 |
+
+## 11. Operação: rastreamento e rede
+
+- **Rastreamento (NFR-014)**: a SOFIA PODE enviar o cabeçalho W3C `traceparent` no `message/send`;
+  o agente continua o trace (OpenTelemetry, ADR-0009) e registra o identificador do trace com o
+  `execucaoId`, o `idExecucao` e o `idSolicitacao`. Nome do usuário, pergunta e textos dos documentos
+  nunca vão para logs, traces ou métricas.
+- **Métricas**: duração e contagem por `status` (`concluido`, `parcial`, `erro`), por Task `failed`
+  e por repetição, com o `idAgente`; tokens e custo ficam no registro de consumo (NFR-009).
+- **Rede Docker**: dentro de contêineres, a SOFIA acessa o agente pelo nome do serviço na rede
+  compartilhada, nunca por `localhost` de outro contêiner. Nesse caso `A2A:UrlPublica` DEVE ser o
+  endereço que a SOFIA alcança (por exemplo `http://api-agente:8080`), porque a SOFIA usa o `url`
+  do card como endpoint RPC. HTTP sem TLS só em rede local isolada (D-05); fora dela, HTTPS e a
+  credencial de serviço da DP-10.
+- **Exemplos**: mensagens completas em [exemplos/](./exemplos/), validadas contra os JSON Schemas
+  e usadas como fixtures dos testes de contrato.

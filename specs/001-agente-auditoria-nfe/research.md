@@ -626,6 +626,16 @@ seria escolhido por ser o mais recente.
   serviço.
 - **`idAgente`**: `agente-auditoria-nfe` (`A2A:IdAgente`); o `agente-fiscal` da referência
   colidiria no registry da SOFIA.
+- **Repetição (FR-043h)**: a SOFIA reutiliza o `idSolicitacao` nas retentativas, e o
+  `InMemoryTaskStore` não sobrevive a reinícios nem identifica a solicitação de negócio. A
+  idempotência fica no MongoDB: `chaveIdempotenciaSofia` com índice único parcial
+  (`partialFilterExpression` com `$exists: true`), removida quando a execução falha. Execução
+  terminada com sucesso é devolvida pelo mesmo mapeador, sem custo de IA; em andamento → ERR-026.
+  Alternativas: reprocessar sempre (custo duplicado e contexto do usuário contado duas vezes) ou
+  recusar toda repetição (a SOFIA perderia o resultado após um tempo limite de rede).
+- **Rastreamento (NFR-014)**: o ASP.NET Core extrai o `traceparent` W3C para a `Activity` da
+  requisição, e o OpenTelemetry (ADR-0009) a exporta; o adaptador só acrescenta tags com os IDs da
+  SOFIA. Sem metadado A2A próprio para trace na v1.
 - **Justificativa**: contrato oficial da turma; o adaptador A2A isola o caso de uso de mudanças no
   contrato.
 - **Alternativas**: manter o contrato provisório ao lado do SOFIA v1.0 (dois contratos no mesmo

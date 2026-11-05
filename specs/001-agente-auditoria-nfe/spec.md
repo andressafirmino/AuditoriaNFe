@@ -123,6 +123,10 @@ convenção da constitution.
   configurado (`sofia`). A autenticação substitui esse modelo no fim do desvio D-05.
 - Q: Qual `idAgente` o agente publica? → A: `agente-auditoria-nfe`, configurável, igual ao do
   registry da SOFIA.
+- Q: O que acontece quando a SOFIA reenvia o mesmo `idSolicitacao`? → A: O agente devolve o
+  resultado da execução já existente, sem reprocessar nem consumir IA. Se a execução ainda estiver
+  em andamento, responde `status: erro` com ERR-026; se ela tiver falhado, a repetição gera nova
+  execução.
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -625,7 +629,7 @@ obtém o Agent Card, envia a solicitação e exibe o resultado com os IDs da sol
   total do FR-004) e o `idDocumento` guardado para os achados. `tipo` é informativo, e a
   identificação segue o conteúdo (FR-006 e FR-007a).
 - **FR-043c**: A solicitação A2A DEVE gerar uma execução do tipo análise com pergunta, em sessão
-  nova, com `idExecucao` e `idSolicitacao` da SOFIA registrados na execução e `idSolicitacao` como
+  nova (salvo repetição, FR-043h), com `idExecucao` e `idSolicitacao` da SOFIA registrados na execução e `idSolicitacao` como
   identificador de correlação. `contexto.instrucoes` NÃO DEVE ser aplicado como instrução
   (constitution P07).
 - **FR-043d**: O agente DEVE responder com uma Task A2A no estado `completed` contendo um Artifact
@@ -648,6 +652,17 @@ obtém o Agent Card, envia a solicitação e exibe o resultado com os IDs da sol
   `observacoes` DEVEM trazer, na ordem do contrato, a situação de cada documento, as limitações, as
   validações não realizadas, a indicação de revisão humana, as recomendações demonstrativas
   (sensíveis só como "pendente de aprovação", sem conteúdo) e o identificador interno da execução.
+- **FR-043h**: A solicitação A2A DEVE ser idempotente por chamador e `idSolicitacao`. Repetição
+  com execução `Concluida` ou `Rejeitada` DEVE devolver o resultado montado a partir da execução
+  existente, sem nova análise, nova chamada ao provedor de IA nem atualização do contexto do
+  usuário; repetição com execução `Recebida` ou `EmProcessamento` DEVE gerar `status: erro` com
+  ERR-026; repetição com execução `Falhou` DEVE gerar nova execução com os mesmos IDs da SOFIA.
+  Repetição com `idExecucao` ou usuário diferentes do registrado DEVE gerar ERR-007. Duas
+  solicitações simultâneas com o mesmo `idSolicitacao` NÃO DEVEM gerar duas execuções ativas.
+- **FR-043i**: O agente NÃO DEVE chamar outros agentes nem encaminhar a solicitação; o roteamento,
+  a agregação e a síntese entre agentes são da SOFIA. `tasks/cancel`, `message/stream` e notificações
+  push não são oferecidos na versão 1; o cancelamento da requisição HTTP pelo cliente DEVE encerrar a
+  execução como `Falhou` com ERR-027, com as etapas registradas.
 - **FR-044**: O agente DEVE publicar um Agent Card no endereço de descoberta do protocolo A2A, no
   formato v0.3 por padrão, contendo: nome, descrição, versão do agente, a habilidade
   `analisar_documentos`, formatos de entrada e saída, e, em extensão do contrato, a versão do
@@ -755,6 +770,11 @@ obtém o Agent Card, envia a solicitação e exibe o resultado com os IDs da sol
 - **NFR-013 (Interoperabilidade)**: O Agent Card, as mensagens e as Tasks DEVEM ser válidos no
   perfil A2A v0.3.x, e a solicitação e o resultado DEVEM ser válidos contra os JSON Schemas do
   contrato SOFIA v1.0.
+- **NFR-014 (Rastreamento entre agentes)**: O agente DEVE continuar o rastreamento recebido no
+  cabeçalho W3C `traceparent` e registrar em logs e traces o identificador do trace, o `execucaoId`,
+  o `idExecucao` e o `idSolicitacao` da SOFIA, sem nome do usuário, pergunta ou conteúdo de
+  documentos. Cada solicitação A2A DEVE gerar métricas de duração e de status (`concluido`,
+  `parcial`, `erro`, `failed`, repetição) por `idAgente`; tokens e custo seguem o NFR-009.
 
 ### Error Handling
 
@@ -789,6 +809,8 @@ parecer; erros por arquivo são registrados no parecer, e os demais arquivos seg
 | ERR-023 | Nenhum pacote de schema cobre a data de referência do documento | Validação de layout "não realizada — schema não disponível para a data"; conteúdo "não realizada"; resultado nunca "Sem inconsistências" | Arquivo |
 | ERR-024 | Limite de taxa ou de análises simultâneas atingido | Rejeitar sem executar análise, informando em quanto tempo tentar de novo | Solicitação |
 | ERR-025 | Armazenamento de sessões e execuções indisponível | Rejeitar sem análise parcial, como falha técnica ou dependência indisponível; nenhum resultado é apresentado como completo | Solicitação |
+| ERR-026 | Solicitação A2A repetida enquanto a execução original está em andamento | Resultado `status: erro`, sem nova execução; a SOFIA pode repetir depois do tempo máximo da execução | Solicitação |
+| ERR-027 | Requisição cancelada pelo chamador durante a execução | Estado "falhou", com as etapas concluídas e as não executadas registradas; nenhuma resposta é entregue | Execução |
 
 ### Key Entities
 
@@ -909,6 +931,8 @@ ele PODE executá-lo. Os XMLs de teste DEVEM ser sintéticos ou anonimizados.
 | TS-065 | Solicitação A2A com uma NF-e válida e um documento que não é NF-e | Status `parcial`; a NF-e é analisada; as observações informam o documento não analisado com ERR-009 | FR-043b, FR-043e, FR-043g | Opcional |
 | TS-066 | Solicitação A2A com `versaoContrato` `"2.0"`, campo obrigatório ausente ou `idDocumento` repetido | Status `erro` com ERR-007, sem análise | FR-043a, FR-047 | Opcional |
 | TS-067 | Duas solicitações A2A com o mesmo nome de usuário (com espaços e maiúsculas diferentes) e uma com outro nome | As duas primeiras usam o mesmo identificador e o mesmo contexto do usuário; a terceira não acessa esse contexto; o nome está na sessão e na execução e não aparece nos logs nem no envio à IA | FR-052d, FR-056 | Não |
+| TS-068 | Solicitação A2A repetida com o mesmo `idSolicitacao`: depois de concluída, durante o processamento, depois de falha e com outro `idExecucao` | Concluída: mesmo resultado, sem nova execução nem consumo de IA; em andamento: `erro` com ERR-026; após falha: nova execução; outro `idExecucao`: ERR-007; duas simultâneas: uma execução só | FR-043h | Não |
+| TS-069 | Solicitação A2A com `traceparent` e documento com instruções ao agente no `infCpl` | O trace continua o recebido; logs com os IDs da SOFIA e sem nome, pergunta ou conteúdo; as instruções do documento não são seguidas (como TS-018) | NFR-014, FR-053 | Não |
 
 ## Success Criteria *(mandatory)*
 

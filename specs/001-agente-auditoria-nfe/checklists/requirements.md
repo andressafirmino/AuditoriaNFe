@@ -45,7 +45,9 @@
   SOFIA provisório (DP-27).
 - Esclarecimentos de 2026-11-05: contrato SOFIA v1.0 no canal A2A, só análise de documentos com
   pergunta (FR-043a a FR-043g, FR-044a), usuário identificado pelo nome (FR-052d) e DP-27 resolvida
-  (constitution 2.2.0, ADR-0011 proposto).
+  (constitution 2.2.0, ADR-0011 proposto). Na revisão pela skill de implementação A2A: repetição
+  idempotente por `idSolicitacao` (FR-043h, ERR-026), papel restrito do agente e cancelamento
+  (FR-043i, ERR-027), rastreamento entre agentes (NFR-014) e exemplos em `contracts/exemplos/`.
 - A autenticação foi adiada pelo desvio temporário D-05 (constitution 5.2); o desvio DEVE ser
   registrado e aprovado na seção "Complexity Tracking" do `plan.md` (constitution 8.3).
 - Os itens de detalhes de implementação seguem desmarcados de propósito: as restrições técnicas

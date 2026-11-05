@@ -262,6 +262,7 @@ specs/001-agente-auditoria-nfe/
 │   ├── sofia-a2a.md                      # Contrato SOFIA v1.0 aplicado ao agente (DP-27, ADR-0011)
 │   ├── sofia-solicitacao-analise-v1.schema.json  # JSON Schema da SolicitacaoAnaliseSofia
 │   ├── sofia-resultado-analise-v1.schema.json    # JSON Schema do ResultadoAnaliseSofia
+│   ├── exemplos/                         # Agent Card, message/send, Task e resultados SOFIA v1.0 (fixtures)
 │   ├── contrato-ia-v1.schema.json        # JSON Schema da saída estruturada do LLM
 │   ├── ferramentas-agente.md             # Contrato v1 das ferramentas do agente interno (constitution 4.6)
 │   └── consulta-manuais-mcp.md           # Contrato do lado consumidor para a Api.RAG (feature 002)
@@ -463,7 +464,19 @@ recebidos com `idDocumento` (FR-043b).
 data-model §0).
 - **Saída**: Task `completed` com o Artifact `analise-sofia-v1` (FR-043d); status, achados e
 observações pelo mapeador do data-model §18. Sem IDs válidos, Task `failed` com ERR-007.
-- **Estados**: a Task volta no estado final (D-04 revisado).
+- **Estados**: a Task volta no estado final (D-04 revisado). Sem `tasks/cancel`; requisição
+abandonada encerra a execução como `Falhou` com ERR-027 (FR-043i).
+- **Repetição**: idempotência por chamador e `idSolicitacao` com `chaveIdempotenciaSofia` e índice
+único parcial em `execucoes` (FR-043h, data-model §2): execução terminada com sucesso → mesmo
+resultado, sem análise nem consumo de IA; em andamento → ERR-026; `Falhou` → nova execução.
+- **Isolamento de papéis**: o agente não chama outros agentes (FR-043i); a orquestração é da SOFIA.
+- **Observabilidade**: `traceparent` continuado pelo OpenTelemetry do ASP.NET Core; logs com
+`execucaoId`, `idExecucao` e `idSolicitacao`; métricas de duração e status por `idAgente`
+(NFR-014, ADR-0009).
+- **Rede**: com a SOFIA em contêiner, rede Docker compartilhada e `A2A:UrlPublica` com o nome do
+serviço (contrato §11, quickstart §8.6).
+- **Exemplos**: mensagens completas em `contracts/exemplos/`, validadas contra os schemas e usadas
+como fixtures dos testes de contrato.
 
 ### Contexto do usuário (FR-055 a FR-060)
 
@@ -564,8 +577,8 @@ recebido da SOFIA ou dados pessoais; telemetria do MAF e do SDK A2A sem dados se
 | Aplicação (IChatClient simulado) | TS-015 a TS-020, TS-026 a TS-028, TS-036 a TS-038, TS-047, TS-055, TS-059                                                                                                                                                                                                                                              |
 | Ferramentas                      | Contrato, argumentos inválidos, autorização e timeout de cada ferramenta                                                                                                                                                                                                                                               |
 | Aprovação                        | TS-040, TS-041, TS-043 a TS-045                                                                                                                                                                                                                                                                                        |
-| Contrato                         | TS-029, TS-032, TS-034, TS-066, JSON Schemas do contrato SOFIA (exemplos válidos e inválidos), mapeadores de solicitação e resultado, envelope v1, OpenAPI de referência, schema do contrato do LLM                                                                                                                    |
-| Integração (Testcontainers)      | TS-002, TS-003, TS-006 a TS-012, TS-021 a TS-025, TS-030, TS-033 (limitado por D-04), TS-035, TS-035a, TS-054, TS-056, TS-058, TS-063 a TS-065, TS-067; rastreabilidade a partir do `execucaoId` (NFR-008, P16)                                                                                                         |
+| Contrato                         | TS-029, TS-032, TS-034, TS-066, JSON Schemas do contrato SOFIA (`contracts/exemplos/` e casos inválidos), mapeadores de solicitação e resultado, envelope v1, OpenAPI de referência, schema do contrato do LLM                                                                                                                    |
+| Integração (Testcontainers)      | TS-002, TS-003, TS-006 a TS-012, TS-021 a TS-025, TS-030, TS-033 (limitado por D-04), TS-035, TS-035a, TS-054, TS-056, TS-058, TS-063 a TS-065, TS-067 a TS-069; rastreabilidade a partir do `execucaoId` (NFR-008, P16)                                                                                                         |
 | Arquitetura                      | Domínio sem pacotes externos; Aplicação sem OpenAI, MCP, A2A, MongoDB ou Npgsql; `SemSegredos`                                                                                                                                                                                                                         |
 | Avaliação                        | Com OpenAI real, sob demanda (P17). Perguntas e recomendações: SC-003, SC-004, SC-008. Análise por IA (lotes sintéticos com divergências conhecidas por grupo de regra): 0 indícios sem evidência verificável, 0 indícios que contradizem ou repetem como novo um achado determinístico e 0 valores não rastreáveis no resumo |
 | Adiados pelo D-05                | TS-031, TS-042                                                                                                                                                                                                                                                                                                         |

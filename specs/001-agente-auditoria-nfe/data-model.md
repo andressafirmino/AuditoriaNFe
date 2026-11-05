@@ -117,7 +117,8 @@ Processamento de uma solicitação (FR-054, NFR-008).
 | ----- | ---- | ------ | ------ |
 | `id` | GUID | Interno | Gerado na recepção |
 | `correlacaoId` | string? | Interno | REST: recebido do chamador e devolvido sem alteração; A2A: o `idSolicitacao` da SOFIA (FR-043c); máx. 128 caracteres |
-| `idExecucaoSofia` / `idSolicitacaoSofia` | GUID? | Interno | Só no A2A: `idExecucao` e `idSolicitacao` recebidos, devolvidos sem alteração no resultado (FR-043c, FR-043e). Retentativa com o mesmo `idSolicitacao` gera nova execução com os mesmos valores |
+| `idExecucaoSofia` / `idSolicitacaoSofia` | GUID? | Interno | Só no A2A: `idExecucao` e `idSolicitacao` recebidos, devolvidos sem alteração no resultado (FR-043c, FR-043e). Repetição segue o FR-043h (abaixo) |
+| `chaveIdempotenciaSofia` | string? | Interno | Só no A2A: `chamadorId` e `idSolicitacao` unidos pelo separador da `IdentificacaoSolicitante` (§0). Gravada na criação da execução e removida quando ela passa a `Falhou`; índice único parcial (só documentos com o campo) garante uma execução ativa ou terminada com sucesso por chave (FR-043h) |
 | `sessaoId` | GUID | Interno | Sessão criada ou continuada |
 | `usuarioId` / `chamadorId` / `usuarioIdentificado` | string / string / bool | Pessoal / Interno / Interno | Da `IdentificacaoSolicitante` |
 | `usuarioNome` | string? | Pessoal | Só no A2A (FR-052d); nunca em log nem no envio ao LLM |
@@ -144,12 +145,22 @@ Processamento de uma solicitação (FR-054, NFR-008).
 
 ```text
 Recebida ──(limites e identificação ok)──→ EmProcessamento ──→ Concluida
-   │                                           └──(timeout ERR-016 ou falha não recuperável)──→ Falhou
+   │                                           └──(timeout ERR-016, cancelamento ERR-027 ou falha não recuperável)──→ Falhou
    └──(ERR-001 a ERR-003, ERR-005 a ERR-007)──→ Rejeitada
 ```
 
 `Concluida` inclui execuções com resultado "Inconclusiva" (dependência indisponível com resultados
 determinísticos entregues). `Falhou` registra as etapas concluídas e as não executadas.
+
+**Repetição no A2A (FR-043h)**: antes de criar a execução, o adaptador procura a execução com a
+mesma `chaveIdempotenciaSofia`:
+
+| Execução encontrada | Ação |
+| ------------------- | ---- |
+| Nenhuma (ou só execuções `Falhou`) | Cria a execução gravando a chave; se a gravação violar o índice único (corrida), segue a linha da execução concorrente |
+| `Recebida` ou `EmProcessamento` | Resultado `erro` com ERR-026, sem criar execução |
+| `Concluida` ou `Rejeitada` | Resultado montado a partir da execução existente (§18), sem nova análise, chamada ao provedor de IA nem atualização do contexto do usuário |
+| Qualquer estado, com `idExecucaoSofia` ou `usuarioId` diferentes | Resultado `erro` com ERR-007, sem criar execução |
 
 ## 3. ArquivoRecebido (M, sem conteúdo)
 
@@ -587,3 +598,8 @@ sem `idExecucao` e `idSolicitacao` UUID → nenhuma execução é criada; a Task
 antes do caso de uso e sem criar execução (como a resposta 400 do canal direto), e geram resultado
 com status `erro` e ERR-007, sem a linha do identificador interno nas observações. Os limites de
 tamanho e de quantidade (ERR-002, ERR-003) seguem o caso de uso, como no canal direto.
+
+**Repetição**: o resultado de uma repetição (FR-043h) é montado pelo mesmo mapeador a partir da
+execução, do parecer e dos arquivos recebidos gravados, e é igual ao da primeira resposta, salvo o
+estado atual das recomendações sensíveis (continuam sem conteúdo). ERR-026 gera resultado `erro`
+sem a linha do identificador interno.

@@ -237,6 +237,28 @@ Esperado: `completed` e um `ResultadoAnaliseSofia` que valida em
 `contracts/sofia-resultado-analise-v1.schema.json`. O nome do usuário aparece na sessão e na
 execução gravadas no MongoDB, mas não nos logs da API (TS-067).
 
+Repita o último `Invoke-RestMethod` com o mesmo `$envelope`: o resultado é o mesmo, com o mesmo
+identificador interno da execução, e nenhuma nova chamada de IA aparece em `consumo.vw_consumo_diario`
+(TS-068). Os exemplos completos de card, envio, Task e resultados estão em
+`specs/001-agente-auditoria-nfe/contracts/exemplos/`.
+
+### 8.6 SOFIA em contêiner
+
+Quando a SOFIA rodar em outro `docker compose` na mesma máquina, ela acessa o agente pelo nome do
+serviço, não por `localhost`. Conecte o contêiner da SOFIA à rede do agente e publique no card o
+endereço que ela alcança:
+
+```powershell
+docker network connect auditoria-nfe-net <conteiner-da-sofia>
+$env:A2A__UrlPublica = 'http://api-agente:8080'
+docker compose up -d api-agente
+Invoke-RestMethod http://localhost:5310/.well-known/agent-card.json | Select-Object url
+```
+
+Esperado: `url = http://api-agente:8080/a2a/auditoria-nfe`, e a SOFIA descobre o agente em
+`http://api-agente:8080/.well-known/agent-card.json`. Sem TLS e sem credencial, só em rede local
+isolada (D-05).
+
 ## 9. Validar a aprovação de recomendações sensíveis (TS-039 a TS-041)
 
 1. Execute pelo canal direto (seção 6) um lote que gere recomendação sensível. Esperado: o parecer
