@@ -1,0 +1,7 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <ProjectReference Include="..\AuditoriaNFe.Domain\AuditoriaNFe.Domain.csproj" />
+  </ItemGroup>
+
+</Project>

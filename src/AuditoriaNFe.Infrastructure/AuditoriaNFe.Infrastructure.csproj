@@ -1,0 +1,13 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <ProjectReference Include="..\AuditoriaNFe.Application\AuditoriaNFe.Application.csproj" />
+    <ProjectReference Include="..\AuditoriaNFe.Domain\AuditoriaNFe.Domain.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Content Include="Schemas\**" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="Catalogos\**" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+</Project>

@@ -1,0 +1,24 @@
+# Segredos e dados locais nunca entram no contexto de build
+.env
+.env.*
+data/
+
+# Artefatos de build e IDE
+**/bin/
+**/obj/
+**/.vs/
+**/*.user
+**/TestResults/
+
+# Fora da imagem
+.git/
+.github/
+.cursor/
+.specify/
+docs/
+specs/
+tests/
+infra/
+**/Dockerfile*
+.dockerignore
+docker-compose*.yml
