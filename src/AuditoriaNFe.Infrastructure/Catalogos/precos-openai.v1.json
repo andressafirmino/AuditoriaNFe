@@ -1,0 +1,29 @@
+{
+  "versao": "precos-openai.v1",
+  "moeda": "USD",
+  "unidade": "1000000 tokens",
+  "fonte": {
+    "url": "https://platform.openai.com/docs/pricing",
+    "consultadoEm": "2026-11-04",
+    "categoria": "Standard",
+    "observacao": "Valores copiados da página oficial de preços da OpenAI na data da consulta (DP-22, P02). Modelos candidatos da avaliação (DP-05); modelo fora da lista tem custo NULL."
+  },
+  "modelos": {
+    "gpt-4.1-mini": {
+      "entrada": 0.40,
+      "entradaCache": 0.10,
+      "saida": 1.60
+    },
+    "gpt-5-mini": {
+      "entrada": 0.25,
+      "entradaCache": 0.025,
+      "saida": 2.00
+    },
+    "gpt-6-luna": {
+      "entrada": 0.10,
+      "entradaCache": 0.01,
+      "saida": 0.50,
+      "observacao": "Preços de contexto curto (short context). A página publica preços maiores para contexto longo; chamadas de contexto longo ficam subestimadas nesta tabela."
+    }
+  }
+}
