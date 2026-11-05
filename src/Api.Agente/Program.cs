@@ -1,3 +1,4 @@
+using Api.Agente.Documentacao;
 using Api.Agente.Erros;
 using Api.Agente.Limites;
 using Api.Agente.Observabilidade;
@@ -32,23 +33,14 @@ builder.Services.AddHealthChecks()
     .AddCheck<VerificacaoPostgres>(VerificacaoPostgres.Nome, tags: [Prontidao])
     .AddCheck<VerificacaoDiretorioAprovacao>(VerificacaoDiretorioAprovacao.Nome, tags: [Prontidao]);
 
-if (builder.Environment.IsDevelopment())
-{
-    builder.Services.AddOpenApi();
-}
+builder.Services.AdicionarDocumentacaoApi(builder.Environment);
 
 var app = builder.Build();
 
 await MigracoesConsumo.AplicarSeHabilitadoAsync(app.Services);
 
 app.UseExceptionHandler();
-
-if (app.Environment.IsDevelopment())
-{
-    app.MapOpenApi();
-    app.UseSwaggerUI(opcoes => opcoes.SwaggerEndpoint("/openapi/v1.json", "Api.Agente v1"));
-}
-
+app.UsarDocumentacaoApi();
 app.UseRouting();
 app.UseRateLimiter();
 
