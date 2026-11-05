@@ -104,7 +104,7 @@ do host, guarda do D-05 e infraestrutura de testes.
 
 ### Endpoints e composição
 
-- [ ] T036 [P] Criar `src/Api.Agente/Identificacao/LeitorIdentificacaoHttp.cs`, que lê `X-Usuario-Id` e `X-Chamador-Id` e monta a `IdentificacaoSolicitante`; formato inválido → 400 com ERR-007, sem execução (FR-052a, FR-052c)
+- [X] T036 [P] Criar `src/Api.Agente/Identificacao/LeitorIdentificacaoHttp.cs`, que lê `X-Usuario-Id` e `X-Chamador-Id` e monta a `IdentificacaoSolicitante`; formato inválido → 400 com ERR-007, sem execução (FR-052a, FR-052c)
 - [ ] T037 [P] Criar `src/Api.Agente/Erros/MapeamentoErrosHttp.cs` com o mapeamento do plano: ERR-001, ERR-003, ERR-007 e ERR-021 → 400; ERR-002 → 413; ERR-005 → 404; ERR-006 → 410; ERR-020 → 409; ERR-022 e ERR-025 → 503; ERR-024 → 429 com `Retry-After`; corpo com o envelope e o objeto `erro` (constitution 4.4)
 - [ ] T038 Criar `src/Api.Agente/Program.cs` e `src/Api.Agente/appsettings.json` (sem segredos): opções, OpenTelemetry com `execucaoId` e `correlacaoId` em todos os logs e sem conteúdo de XML, pergunta, resposta, contexto do usuário ou `usuarioId` em claro (ADR-0009, P16); OpenAPI e Swagger UI só em `Development` (R-20); guarda do D-05 que recusa iniciar fora de `Development` enquanto `Seguranca:AutenticacaoHabilitada=false` (R-17); limite de corpo `Limites:CorpoHttpBytes`; limitação de taxa em janela fixa por `chaveIsolamento` (`LimiteTaxa:PermissoesPorJanela`, `LimiteTaxa:Janela`) nas rotas de análise e de decisão; limite de concorrência `Concorrencia:MaxExecucoes`; rejeição pelos dois limites com ERR-024 e `Retry-After`; migrações quando `Persistencia:AplicarMigracoes=true`; `/health/live` e `/health/ready` (depende de T025, T028, T029, T034 a T037)
 
