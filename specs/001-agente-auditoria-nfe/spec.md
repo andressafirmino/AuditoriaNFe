@@ -955,7 +955,7 @@ pertencem ao plano técnico.
   fixada no plano técnico. Na versão fixada no plano (hosting A2A do Microsoft Agent Framework
   1.26.0-preview), respostas em segundo plano (tarefas A2A) não são suportadas: toda resposta é uma
   mensagem final, e os estados intermediários do FR-046 não são observáveis por A2A (desvio D-04 do
-  plano, pendente de decisão).
+  plano, aprovado por Andressa Firmino em 2026-11-04).
 - **OpenAI**: a análise por IA depende de serviço externo, com custo por uso, limites de taxa e
   disponibilidade fora do controle do projeto; os dados enviados seguem a política de minimização
   (DP-14).

@@ -18,7 +18,7 @@ modelo de dados: [contracts/api-agente.openapi.yaml](./contracts/api-agente.open
 
 | Item | Versão | Observação |
 | ---- | ------ | ---------- |
-| .NET SDK | 10.0 (LTS) | `dotnet --list-sdks` DEVE listar um SDK 10.0.x; o `global.json` fixa essa versão. Em 2026-11-04 a máquina de desenvolvimento tinha só os SDKs 9.0 e 11.0 RC: instale o SDK 10 antes de compilar |
+| .NET SDK | 10.0 (LTS) | `dotnet --list-sdks` DEVE listar um SDK 10.0.x; o `global.json` fixa essa versão (10.0.403, instalado em 2026-11-04 na máquina de desenvolvimento) |
 | Docker Desktop (contêineres Linux) | atual | Necessário para o compose e para os testes de integração (Testcontainers) |
 | Git | atual | |
 | PowerShell | 7.x | Os exemplos usam `Invoke-RestMethod -Form`, que não existe no Windows PowerShell 5.1 |

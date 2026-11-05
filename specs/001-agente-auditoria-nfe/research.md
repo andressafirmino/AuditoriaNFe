@@ -51,9 +51,9 @@ Diagnósticos experimentais com supressão pontual e documentada no `Directory.B
   `AuditoriaNFe.Infrastructure` e nos testes (lição V-08 do AgenteFinanceiro, R-33).
 
 **SDK do .NET**: o `global.json` fixa o SDK 10 (LTS) e o runner de testes
-`Microsoft.Testing.Platform` (lição V-07). Em 2026-11-04 a máquina de desenvolvimento tinha apenas
-os SDKs 9.0.302 e 11.0 RC e o runtime ASP.NET Core 10.0.14; o SDK 10 DEVE ser instalado antes da
-implementação (ver quickstart).
+`Microsoft.Testing.Platform` (lição V-07). Em 2026-11-04 o SDK 10.0.403 foi instalado na máquina
+de desenvolvimento, que também tem os SDKs 9.0.302 e 11.0 RC; sem o `global.json`, o SDK 11 RC
+seria escolhido por ser o mais recente.
 
 ## 2. Decisões
 

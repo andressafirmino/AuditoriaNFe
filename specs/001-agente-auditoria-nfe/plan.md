@@ -48,8 +48,8 @@ orquestrado por código determinístico; o LLM nunca decide a ordem das etapas n
 ## Technical Context
 
 **Language/Version**: C# 14 / .NET 10 (LTS); ASP.NET Core 10 (Minimal APIs). O `global.json` fixa o
-SDK 10 e o runner `Microsoft.Testing.Platform`. A máquina de desenvolvimento ainda não tem o SDK 10
-instalado (só 9.0 e 11.0 RC): instalação obrigatória antes das tarefas.
+SDK 10 e o runner `Microsoft.Testing.Platform`. A máquina de desenvolvimento tem o SDK 10.0.403
+desde 2026-11-04, ao lado dos SDKs 9.0 e 11.0 RC; por isso o `global.json` é obrigatório.
 
 **Primary Dependencies** (versões fixadas em `Directory.Packages.props`; detalhes em
 [research.md §1](./research.md#1-pacotes-oficiais-e-versões-fixadas)):
