@@ -53,7 +53,9 @@ Copy-Item .env.example .env
 | `OpenAI__ApiKey` | (sua chave) | Obrigatória só com `Ia__Provedor=OpenAI` |
 | `OpenAI__Modelo` | (modelo aprovado pela avaliação, DP-05) | Sem valor padrão |
 | `Mcp__Habilitado` | `false` | Integração MCP desabilitada nesta feature |
-| `A2A__UrlPublica` | `http://localhost:5310` | URL publicada no Agent Card |
+| `A2A__UrlPublica` | `http://localhost:5310` | URL base publicada no Agent Card |
+| `A2A__IdAgente` | `agente-auditoria-nfe` | `idAgente` do card e do resultado; igual ao registry da SOFIA |
+| `A2A__ChamadorPadrao` | `sofia` | `chamadorId` das solicitações A2A (D-05) |
 | `Limites__TamanhoTotalBytes` / `Limites__QuantidadeArquivos` | `5242880` / `20` | FR-004, FR-005 |
 | `ContextoUsuario__RetencaoInatividade` | `90.00:00:00` | FR-060 |
 
@@ -97,9 +99,13 @@ Esperado:
 
 - `live` e `ready` saudáveis; `ready` falha se o MongoDB, o PostgreSQL ou o diretório de checkpoints
   estiverem indisponíveis, ou se algum XSD não conferir com o SHA-256 do manifesto.
-- O Agent Card com `name = AgenteAuditoriaNFe`, as três habilidades, `supportedInterfaces` com
-  HTTP+JSON e JSON-RPC, os limites (5 MB, 20 arquivos), `situacaoContrato = provisorio` e
-  `autenticacao = nenhuma — somente ambiente local de testes`. Nenhum segredo no card (TS-029).
+- O Agent Card no formato A2A v0.3 (`contracts/sofia-a2a.md` §2): `name = AgenteAuditoriaNFe`,
+  `url = http://localhost:5310/a2a/auditoria-nfe`, `protocolVersion = 0.3.0`, `preferredTransport =
+  JSONRPC`, a habilidade `analisar_documentos` e a extensão `urn:infis:sofia:contrato` com
+  `versaoContrato = 1.0`, `idAgente = agente-auditoria-nfe`, `nomeArtifact = analise-sofia-v1`, os
+  limites (5 MB, 20 documentos) e `autenticacao = nenhuma — somente ambiente local de testes`. Nenhum
+  segredo nem `securitySchemes` no card (TS-029). Com o cabeçalho `A2A-Version: 1.0`, o mesmo card sai
+  no formato A2A 1.0.
 
 ## 6. Validar o núcleo pelo canal direto
 
@@ -149,44 +155,93 @@ livre (TS-057). Com outro `X-Usuario-Id` ou `X-Chamador-Id`, a consulta não enc
 
 ## 8. Validar com o Sofia.Simulator
 
+O simulador fala o contrato SOFIA v1.0 sobre A2A v0.3 (`contracts/sofia-a2a.md`): envia uma
+`SolicitacaoAnaliseSofia` com nome fictício, uma pergunta e os XMLs sintéticos de
+`src/Sofia.Simulator/Exemplos` lidos como texto, e lê o `ResultadoAnaliseSofia` do Artifact
+`analise-sofia-v1`. O endereço do agente é a única configuração (SC-005).
+
 ### 8.1 Fluxo básico — TS-035 (obrigatório)
 
 ```powershell
-dotnet run --project src/Sofia.Simulator -- `
-  --agente http://localhost:5310 --usuario usuario-demo-01 --chamador sofia-simulador --cenario basico
+dotnet run --project src/Sofia.Simulator -- --endereco http://localhost:5310 --cenario basico
 ```
 
 Esperado no console, em ordem:
 
-1. Agent Card obtido, com habilidades, limites e a ausência de autenticação exibidos.
-2. Solicitação A2A real enviada com uma pergunta e os XMLs sintéticos de `src/Sofia.Simulator/Exemplos`.
-3. Estado final `Concluida`, resumo textual em pt-BR, parecer (resultado geral, pacote aplicado e
-   achados por arquivo, limitações e revisão humana) e os identificadores `execucaoId`, `sessaoId` e
-   `contextId`.
+1. Agent Card obtido, com a habilidade `analisar_documentos`, o `idAgente`, os limites e a ausência
+   de autenticação.
+2. Solicitação enviada por `message/send`, com `idExecucao` e `idSolicitacao` novos.
+3. Task no estado `completed`; `status` (`concluido` ou `parcial`), a `analise` em pt-BR, os
+   `achados` com severidade, documentos e evidências, e as `observacoes` (validação determinística,
+   pacote de schema, limitações e revisão humana).
+4. Conferência dos IDs: `idExecucao` e `idSolicitacao` do resultado iguais aos enviados.
 
 ### 8.2 Agent Card inacessível — TS-035a (obrigatório)
 
 ```powershell
-dotnet run --project src/Sofia.Simulator -- --agente http://localhost:9999 --cenario basico
+dotnet run --project src/Sofia.Simulator -- --endereco http://localhost:9999 --cenario basico
 ```
 
 Esperado: mensagem de falha de descoberta e nenhuma solicitação enviada (código de saída diferente
 de zero).
 
-### 8.3 Continuidade de sessão — TS-021 (opcional)
+### 8.3 Documento não suportado — TS-065 (opcional)
 
 ```powershell
-dotnet run --project src/Sofia.Simulator -- `
-  --agente http://localhost:5310 --usuario usuario-demo-01 --chamador sofia-simulador --cenario continuidade
+dotnet run --project src/Sofia.Simulator -- --endereco http://localhost:5310 --cenario documento-nao-suportado
 ```
 
-Esperado: a segunda pergunta usa o mesmo `contextId` e `sessaoId`, é respondida sem reenvio de
-arquivos e cita valores com documentos e campos de origem (FR-027, FR-031).
+Esperado: uma NF-e válida e um texto que não é NF-e na mesma solicitação; `status: parcial`, achados
+da NF-e e uma observação com ERR-009 para o outro documento.
+
+### 8.4 Contrato inválido — TS-066 (opcional)
+
+```powershell
+dotnet run --project src/Sofia.Simulator -- --endereco http://localhost:5310 --cenario contrato-invalido
+```
+
+Esperado: solicitação com `versaoContrato: "2.0"`; Task `completed` com `status: erro`,
+`erro.codigo = ERR-007`, os IDs devolvidos e nenhuma execução criada.
+
+### 8.5 Chamada manual (sem o simulador)
+
+```powershell
+$solicitacao = @{
+  versaoContrato = '1.0'
+  idExecucao     = [guid]::NewGuid().ToString()
+  idSolicitacao  = [guid]::NewGuid().ToString()
+  usuario        = @{ nome = 'Usuária Fictícia' }
+  pergunta       = 'Verifique divergências fiscais nos documentos.'
+  documentos     = @(@{
+    idDocumento = 'doc-001'
+    nome        = 'nfe-sintetica.xml'
+    texto       = Get-Content -Raw src/Sofia.Simulator/Exemplos/<arquivo-valido>.xml
+  })
+} | ConvertTo-Json -Depth 5 -Compress
+
+$envelope = @{
+  jsonrpc = '2.0'; id = 'rpc-001'; method = 'message/send'
+  params  = @{ message = @{
+    kind = 'message'; role = 'user'; messageId = [guid]::NewGuid().ToString()
+    parts = @(@{ kind = 'text'; text = $solicitacao })
+  } }
+} | ConvertTo-Json -Depth 8 -Compress
+
+$resposta = Invoke-RestMethod -Method Post http://localhost:5310/a2a/auditoria-nfe `
+  -ContentType 'application/json; charset=utf-8' -Body ([Text.Encoding]::UTF8.GetBytes($envelope))
+$resposta.result.status.state
+($resposta.result.artifacts | Where-Object name -eq 'analise-sofia-v1').parts[0].text | ConvertFrom-Json
+```
+
+Esperado: `completed` e um `ResultadoAnaliseSofia` que valida em
+`contracts/sofia-resultado-analise-v1.schema.json`. O nome do usuário aparece na sessão e na
+execução gravadas no MongoDB, mas não nos logs da API (TS-067).
 
 ## 9. Validar a aprovação de recomendações sensíveis (TS-039 a TS-041)
 
-1. Execute um lote que gere recomendação sensível (cenário `recomendacoes` do simulador). Esperado: o
-   parecer chega na hora, com a recomendação "pendente de aprovação" e sem conteúdo.
+1. Execute pelo canal direto (seção 6) um lote que gere recomendação sensível. Esperado: o parecer
+   chega na hora, com a recomendação "pendente de aprovação" e sem conteúdo. Pelo A2A, o
+   `ResultadoAnaliseSofia` só traz a observação "pendente de aprovação", nunca o conteúdo.
 2. Liste as pendências e decida, informando o aprovador nos cabeçalhos (sem verificação na v1):
 
    ```powershell
@@ -197,12 +252,10 @@ arquivos e cita valores com documentos e campos de origem (FR-027, FR-031).
      -ContentType 'application/json' -Body '{ "justificativa": "Motivo da rejeição" }'
    ```
 
-3. Consulte por A2A:
+3. Consulte a execução pelo canal direto (o contrato SOFIA v1.0 não tem consulta de recomendações):
 
    ```powershell
-   dotnet run --project src/Sofia.Simulator -- `
-     --agente http://localhost:5310 --usuario usuario-demo-01 --chamador sofia-simulador `
-     --cenario recomendacoes --execucao <execucaoId>
+   Invoke-RestMethod http://localhost:5310/api/v1/execucoes/<execucaoId> -Headers $cabecalhos
    ```
 
 Esperado:

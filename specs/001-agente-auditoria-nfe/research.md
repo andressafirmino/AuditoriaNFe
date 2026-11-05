@@ -14,6 +14,11 @@ de totalizadores, seleção do pacote de schema pela data de referência, contex
 sem autenticação (desvio D-05), contrato com a SOFIA provisório, Docker com portas próprias, lições do
 AgenteFinanceiro e padrão de custos do projeto-ia-infis.
 
+**Revisão de 2026-11-05**: contrato SOFIA v1.0 (DP-27 resolvida na constitution 2.2.0, ADR-0011
+proposto). O canal A2A passa ao perfil v0.3.x com a camada oficial `A2A.V0_3Compat`, servido pelo
+`A2AServer` do SDK com manipulador próprio; os pacotes de hosting e de cliente A2A do MAF deixam de
+ser usados (R-11, R-12, R-32, R-33, §3.9 a §3.11).
+
 ## 1. Pacotes oficiais e versões fixadas
 
 As versões abaixo DEVEM ser fixadas por Central Package Management (`Directory.Packages.props`).
@@ -25,10 +30,10 @@ próprio com execução completa dos testes de contrato A2A.
 | `Microsoft.Agents.AI` | 1.26.0 | Estável | `AIAgent`, `ChatClientAgent`, `AgentSession`, `AIContextProvider`, middleware | Application |
 | `Microsoft.Agents.AI.OpenAI` | 1.26.0 | Estável | Criação de agentes sobre o cliente OpenAI (`AsAIAgent`) e `IChatClient` OpenAI | Infrastructure |
 | `Microsoft.Agents.AI.Workflows` | 1.26.0 | Estável | Workflow de aprovação humana, `RequestPort`, checkpoints | Application, Infrastructure |
-| `Microsoft.Agents.AI.Hosting.A2A.AspNetCore` | 1.26.0-preview.261023.1 | Pré-lançamento | Servidor A2A (inclui `Microsoft.Agents.AI.Hosting.A2A`, `A2A` e `A2A.AspNetCore` 1.0.0-preview3) | Api.Agente |
 | `Microsoft.Agents.AI.Hosting.AspNetCore` | 1.26.0-preview.261023.1 | Pré-lançamento | Hospedagem do agente; o isolamento por claims fica para o fim do desvio D-05 | Api.Agente |
-| `Microsoft.Agents.AI.A2A` | 1.26.0-preview.261023.1 | Pré-lançamento | Cliente A2A (`A2ACardResolver`, `A2AAgent`) | Sofia.Simulator, Tests |
-| `A2A` / `A2A.AspNetCore` | 1.0.0-preview3 | Pré-lançamento | SDK oficial A2A (transitivo; `AgentCard`, `MapWellKnownAgentCard`) | Api.Agente, Sofia.Simulator |
+| `A2A` / `A2A.AspNetCore` | 1.0.0-preview3 | Pré-lançamento | SDK oficial A2A: `A2AServer`, `IAgentHandler`, `TaskUpdater`, `InMemoryTaskStore`, `AgentCard` | Api.Agente |
+| `A2A.V0_3Compat` | 1.0.0-preview3 | Pré-lançamento | Perfil A2A v0.3 sobre o SDK 1.0: `MapA2AWithV03Compat`, `MapAgentCardGetWithV03Compat` (inclui `A2A.V0_3`) | Api.Agente |
+| `A2A.V0_3` | 1.0.0-preview3 | Pré-lançamento | Cliente oficial v0.3 (`A2ACardResolver`, `A2AClient.SendMessageAsync`) | Sofia.Simulator, Tests |
 | `Microsoft.Extensions.AI.OpenAI` | 10.11.0 | Estável | Adaptador `IChatClient` para OpenAI (transitivo do MAF OpenAI) | Infrastructure |
 | `OpenAI` | ≥ 2.14.0 | Estável | SDK oficial OpenAI (transitivo) | Infrastructure |
 | `ModelContextProtocol.Core` | 2.3.0 | Estável | Cliente MCP (`McpClient`, `HttpClientTransport`) | Infrastructure |
@@ -44,9 +49,15 @@ próprio com execução completa dos testes de contrato A2A.
 `Microsoft.AspNetCore.Authentication.JwtBearer` saiu da lista: a versão 1 não tem autenticação
 (desvio D-05, R-17). O pacote do mecanismo de credencial será escolhido no ADR da DP-10.
 
+`Microsoft.Agents.AI.Hosting.A2A.AspNetCore` e `Microsoft.Agents.AI.A2A` (1.26.0-preview.261023.1)
+saíram da lista em 2026-11-05: o hosting A2A do MAF responde só com Message e não atende o contrato
+SOFIA v1.0 (R-11). Os pacotes A2A ficam em 1.0.0-preview3, a versão verificada; a 1.0.0-preview4 já
+existe no NuGet e só entra em PR próprio, com os testes de contrato.
+
 Diagnósticos experimentais com supressão pontual e documentada no `Directory.Build.props`:
 
-- APIs do hosting A2A marcadas com `[Experimental]` (continuações de resposta), no `Api.Agente`.
+- APIs do SDK A2A ou da camada `A2A.V0_3Compat` marcadas com `[Experimental]`, no `Api.Agente`,
+  quando houver.
 - `MAAI001` (`AgentSessionStore` experimental no MAF 1.26), no `AuditoriaNFe.Application`, no
   `AuditoriaNFe.Infrastructure` e nos testes (lição V-08 do AgenteFinanceiro, R-33).
 
@@ -69,7 +80,9 @@ seria escolhido por ser o mais recente.
 
 - **Decisão**: usar o Microsoft Agent Framework 1.26.0 para o agente, as ferramentas por Function
   Calling (`AIFunctionFactory` do Microsoft.Extensions.AI), os context providers, o middleware, as
-  sessões, o workflow de aprovação e a hospedagem A2A.
+  sessões e o workflow de aprovação. A hospedagem A2A do contrato SOFIA v1.0 usa o servidor do SDK
+  A2A com manipulador próprio, porque o hosting A2A do MAF na versão fixada responde só com Message
+  (R-11; desvio D-07 do plano, pendente de aprovação).
 - **Justificativa**: exigido pela constitution 2.0.0 (seção 3.1). O MAF cobre, em um único modelo,
   Function Calling, sessões serializáveis, context providers (usados no contexto do usuário),
   middleware, workflows com checkpoint e hospedagem A2A oficial. O AgenteFinanceiro usa a mesma
@@ -97,9 +110,11 @@ seria escolhido por ser o mais recente.
 
 - **Decisão**: o fluxo das nove etapas (constitution 3.4) é executado por um caso de uso da camada de
   Aplicação (`ExecutarSolicitacaoAuditoria`), em código determinístico. O LLM participa apenas da
-  etapa 7, por um `ChatClientAgent` interno que recebe os resultados das etapas 3 e 4 como dados. Um
-  agente personalizado derivado de `AIAgent` (`AgenteAuditoriaNFe`) é a porta de entrada do canal A2A
-  e delega ao mesmo caso de uso usado pelo canal REST (P18: sem desvio de canal).
+  etapa 7, por um `ChatClientAgent` interno que recebe os resultados das etapas 3 e 4 como dados. O
+  manipulador A2A (`ManipuladorSofiaA2A`, R-11) é a porta de entrada do canal A2A e delega ao mesmo
+  caso de uso usado pelo canal REST (P18: sem desvio de canal). O agente personalizado
+  `AgenteAuditoriaNFe` (`AIAgent`) previsto para o hosting A2A do MAF deixou de ser necessário em
+  2026-11-05.
 - **Justificativa**: P03 (determinístico precede e prevalece), FR-016, NFR-005 e ERR-013 a ERR-016
   exigem que validações e resultados determinísticos existam mesmo sem IA. Deixar o LLM decidir a
   ordem das etapas violaria o P10.
@@ -172,15 +187,13 @@ seria escolhido por ser o mais recente.
   inatividade (24 h, configurável) é verificada a cada solicitação; a remoção física segue o ADR de
   retenção (DP-13).
 - **Isolamento sem autenticação (D-05)**: a chave de isolamento é o SHA-256 de `chamadorId` e
-  `usuarioId`, informados nos metadados (A2A) ou nos cabeçalhos (REST), ou dos valores padrão
-  "nao-informado" e "anonimo" (FR-052a, FR-052c). O caso de uso confere a chave em todo acesso a
-  sessão e responde ERR-005 sem revelar a existência da sessão (FR-039).
-- **Sessão A2A**: a sessão do hosting A2A segue o `contextId`. Como não há claims, o
-  `AgentIsolationKeyProvider` do hosting não é usado na v1. A sessão do agente externo
-  (`AgenteAuditoriaNFe`) guarda apenas um mapa `chaveIsolamento → sessaoId`, sem histórico nem
-  conteúdo; o histórico do agente interno fica na sessão de domínio, isolada pela chave. Assim, um
-  `contextId` reutilizado por outro usuário não dá acesso ao histórico nem altera a continuidade do
-  primeiro usuário.
+  `usuarioId`, informados nos cabeçalhos (REST) ou derivados do contrato SOFIA (A2A: chamador
+  padrão e hash do nome, data-model §0), ou dos valores padrão "nao-informado" e "anonimo"
+  (FR-052a, FR-052c, FR-052d). O caso de uso confere a chave em todo acesso a sessão e responde
+  ERR-005 sem revelar a existência da sessão (FR-039).
+- **Sessão A2A**: o contrato SOFIA v1.0 não tem continuidade; cada solicitação abre uma sessão de
+  domínio nova, e o `contextId` A2A não é associado a sessão nenhuma. Não há sessão do hosting A2A
+  nem `AgentIsolationKeyProvider`.
 - **Redução de histórico (FR-042)**: o histórico textual é reduzido por um redutor do
   Microsoft.Extensions.AI configurado no provedor de histórico da sessão; o ponto exato de
   configuração DEVE ser confirmado na versão 1.26.0 durante as tarefas. Os resultados de análise ficam
@@ -234,39 +247,57 @@ seria escolhido por ser o mais recente.
   atende ao pedido de Workflow); `ApprovalRequiredAIFunction` (aprova execução de ferramenta, não
   liberação de conteúdo).
 
-### R-11 — Servidor A2A e Agent Card (proposta v1 provisória, DP-27)
+### R-11 — Servidor A2A e Agent Card (contrato SOFIA v1.0, ADR-0011)
 
-- **Decisão**: registrar o agente `AgenteAuditoriaNFe` como `AIAgent` com chave
-  `"auditoria-nfe"`, registrar o `AgentSessionStore` MongoDB com a mesma chave, chamar
-  `builder.AddA2AServer("auditoria-nfe", o => o.AgentRunMode = AgentRunMode.DisallowBackground)` e
-  mapear `MapA2AHttpJson` (preferencial) e `MapA2AJsonRpc` em `/a2a/auditoria-nfe`. Publicar o card
-  com `MapWellKnownAgentCard` em `/.well-known/agent-card.json`. Protocolo A2A 1.0, conforme o SDK
-  1.0.0-preview3. O contrato [contracts/sofia-a2a.md](./contracts/sofia-a2a.md) é uma proposta v1
-  provisória até a DP-27; mudanças acordadas com a SOFIA afetam só o adaptador A2A e o card.
-- **Autenticação no card (D-05)**: o card não declara `securitySchemes` e informa, na extensão do
-  contrato, `autenticacao: "nenhuma — somente ambiente local de testes"` (FR-052b).
-- **Limitação relevante**: respostas em segundo plano (tarefas A2A de longa duração) ainda não são
-  suportadas pelo hosting A2A do MAF; todas as respostas são mensagens imediatas. O FR-046 e o TS-033
-  ficam parcialmente atendidos (ver plano, desvio D-04).
-- **Conversão de conteúdo**: partes de arquivo e de dados do A2A chegam ao agente como `DataContent`
-  (ou `UriContent`); `DataContent` de resposta é enviado como parte de arquivo; metadados da mensagem
-  A2A chegam em `AgentRunOptions.AdditionalProperties`, e `AgentResponse.AdditionalProperties` volta
-  como `Message.Metadata`. O contrato usa esse mapeamento para correlação e identificadores.
-- **Lições do AgenteFinanceiro (R-33)**: V-06 (metadados de status não chegam à tarefa), V-09
-  (conflito de nome `AgentSkill`) e V-10 (mensagens para tarefas encerradas barradas antes do
-  handler) DEVEM ser cobertas por testes de contrato antes de qualquer uso de tarefas A2A.
-- **Alternativas**: API obsoleta `MapA2A(agent, path, agentCard)` (rejeitada); implementar o protocolo
-  manualmente (rejeitado pelo FR-043).
+- **Decisão**: servir o perfil A2A v0.3.x exigido pelo contrato SOFIA v1.0 com o SDK oficial `A2A`
+  1.0.0-preview3 e a camada oficial `A2A.V0_3Compat` 1.0.0-preview3:
+  - `A2AServer(IAgentHandler, ITaskStore, ...)` com o manipulador próprio
+    `ManipuladorSofiaA2A : IAgentHandler` e `InMemoryTaskStore`;
+  - `MapA2AWithV03Compat(endpoints, requestHandler, "/a2a/auditoria-nfe")`, que aceita requisições
+    v0.3 e v1.0 no mesmo caminho; só `message/send` v0.3 é contratual;
+  - `MapAgentCardGetWithV03Compat(endpoints, requestHandler, fabricaCard, ...)` em
+    `/.well-known/agent-card.json`, com `blendedCard = false`: o formato do card segue o cabeçalho
+    `A2A-Version` (sem cabeçalho ou `0.3` → v0.3 estrito; `1.0` → A2A 1.0).
+- **Manipulador**: em `ExecuteAsync(RequestContext, AgentEventQueue, CancellationToken)`, lê a única
+  parte de texto da Message, desserializa e valida a `SolicitacaoAnaliseSofia` (FR-043a), monta a
+  identificação pelo nome (FR-052d), chama o mesmo caso de uso do canal direto e publica pelo
+  `TaskUpdater(eventQueue, taskId, contextId)`: `SubmitAsync`, `StartWorkAsync`,
+  `AddArtifactAsync` (Artifact `analise-sofia-v1` com o `ResultadoAnaliseSofia`) e `CompleteAsync`;
+  sem IDs válidos, `FailAsync` com a mensagem "ERR-007: …" (FR-043d).
+- **Bloqueio**: a camada de compatibilidade mapeia `ReturnImmediately = !Blocking`. A SOFIA DEVE
+  omitir `configuration` ou enviar `blocking: true`; o contrato registra a regra, e o teste de
+  contrato cobre os dois casos.
+- **Por que não o hosting A2A do MAF**: `AddA2AServer` com `AgentRunMode.DisallowBackground` (MAF
+  1.26.0-preview) responde com Message, e o contrato exige Task com Artifact. O servidor do SDK
+  continua sendo o SDK oficial (FR-043), sem implementar JSON-RPC à mão.
+- **Autenticação no card (D-05)**: o card não declara `securitySchemes` e informa, na extensão
+  `urn:infis:sofia:contrato`, `autenticacao: "nenhuma — somente ambiente local de testes"`
+  (FR-052b).
+- **Estados (D-04 revisado)**: a análise roda dentro da requisição; a Task volta no estado final.
+  Os estados intermediários emitidos pelo `TaskUpdater` não são observáveis pela SOFIA na v1.
+- **Validação inicial (spike)**: antes do manipulador, um teste confirma, na versão fixada, os
+  nomes do card v0.3 produzidos pelo conversor, a Task com Artifact devolvida por `message/send`
+  v0.3 com e sem `configuration`, e o erro do `FailAsync` na resposta. O spike também verifica se o
+  `AddA2AServer` do MAF aceita um `IAgentHandler` próprio registrado com a chave do agente e se o
+  `IA2ARequestHandler` resultante pode ser entregue ao `MapA2AWithV03Compat`. Se sim, esse caminho
+  é adotado e o desvio D-07 (constitution 3.1, hospedagem A2A pelo MAF) é encerrado; se não, segue
+  o `A2AServer` direto com o D-07 aprovado.
+- **Alternativas**: hosting A2A do MAF (não atende o contrato); implementar o protocolo à mão
+  (rejeitado pelo FR-043); fixar o SDK A2A 0.3.x (abandona a linha 1.0 e a convivência com A2A 1.0).
 
 ### R-12 — Cliente A2A do Sofia.Simulator
 
-- **Decisão**: `A2ACardResolver` para obter o card e `GetAIAgentAsync(...)` com
-  `A2AClientOptions { PreferredBindings = [ProtocolBindingNames.HttpJson] }` para criar o `AIAgent`
-  remoto; envio de `ChatMessage` com `TextContent` (pergunta) e `DataContent` (XML,
-  `application/xml`), com `usuarioId`, `chamadorId` e `correlacaoId` nos metadados; leitura da
-  resposta em texto e da parte de arquivo JSON com o envelope. Sem token na v1 (D-05).
-- **Justificativa**: usa somente o contrato público (FR-048) e o SDK oficial.
-- **Alternativas**: `HttpClient` cru contra o endpoint (rejeitado pelo FR-043/FR-048).
+- **Decisão**: cliente oficial v0.3 do pacote `A2A.V0_3` 1.0.0-preview3: `A2ACardResolver` para
+  obter o card (sem cabeçalho `A2A-Version`, recebendo o formato v0.3) e `A2AClient` apontado para o
+  `url` do card, com `SendMessageAsync` e uma Message com uma parte de texto contendo a
+  `SolicitacaoAnaliseSofia` serializada (IDs gerados, nome fictício, pergunta e XMLs sintéticos
+  lidos como texto). A resposta é lida como Task: estado, Artifact `analise-sofia-v1` e o
+  `ResultadoAnaliseSofia` desserializado e conferido contra os IDs enviados. Sem credencial na v1
+  (D-05).
+- **Justificativa**: usa somente o contrato público (FR-048) e o SDK oficial, no mesmo perfil que a
+  SOFIA usa.
+- **Alternativas**: `HttpClient` cru contra o endpoint (rejeitado pelo FR-043/FR-048); cliente
+  A2A do MAF (`Microsoft.Agents.AI.A2A`), que fala A2A 1.0 e não exercita o perfil v0.3.
 
 ### R-13 — Ponto de integração MCP (preparado e desabilitado)
 
@@ -385,11 +416,12 @@ seria escolhido por ser o mais recente.
 
 ### R-17 — Autenticação: fora da versão 1 (desvio D-05)
 
-- **Decisão**: a versão 1 não autentica o chamador nem o usuário. O chamador informa `chamadorId` e
-  `usuarioId` nos metadados A2A ou nos cabeçalhos `X-Chamador-Id` e `X-Usuario-Id` do canal direto;
-  sem eles, usam-se "nao-informado" e "anonimo" (FR-052a, FR-052c). Os valores são validados quanto
-  ao formato (até 128 caracteres de `[A-Za-z0-9._:@-]`), registrados e usados no isolamento, sem
-  verificação de identidade.
+- **Decisão**: a versão 1 não autentica o chamador nem o usuário. No canal direto, o chamador
+  informa `chamadorId` e `usuarioId` nos cabeçalhos `X-Chamador-Id` e `X-Usuario-Id`; sem eles,
+  usam-se "nao-informado" e "anonimo" (FR-052a, FR-052c). Os valores são validados quanto ao
+  formato (até 128 caracteres de `[A-Za-z0-9._:@-]`), registrados e usados no isolamento, sem
+  verificação de identidade. No A2A, o chamador é `A2A:ChamadorPadrao` e o usuário vem do
+  `usuario.nome` do contrato SOFIA (FR-052d, data-model §0).
 - **Mitigação técnica do D-05 (FR-052b)**:
   1. o `Api.Agente` recusa iniciar fora do ambiente `Development` enquanto
      `Seguranca:AutenticacaoHabilitada = false`, que é o único valor aceito na v1;
@@ -536,14 +568,14 @@ seria escolhido por ser o mais recente.
 - **Dependências**: a Aplicação referencia as abstrações do MAF (`Microsoft.Agents.AI`,
   `Microsoft.Agents.AI.Workflows`, `Microsoft.Extensions.AI.Abstractions`), permitido pela
   constitution 2.0.0 (3.3). Clientes concretos (OpenAI, MCP, MongoDB, Npgsql) ficam na
-  Infraestrutura; o servidor A2A fica no `Api.Agente`. O Domínio não referencia nenhum pacote
+  Infraestrutura; o servidor A2A e os DTOs do contrato SOFIA ficam no `Api.Agente`. O Domínio não referencia nenhum pacote
   externo. O antigo desvio D-02 deixou de existir.
 
 ### R-29 — Limites de requisição e concorrência (constitution 5.2)
 
 - **Decisão**: limite do corpo HTTP configurado acima do limite lógico (para que o sistema consiga
   responder ERR-002 com o total recebido; o padrão é o dobro do limite total de arquivos, por causa da
-  codificação base64 no A2A); validação de tamanho total e quantidade antes de qualquer
+  codificação base64 do REST e do escape JSON dos textos no A2A); validação de tamanho total e quantidade antes de qualquer
   processamento; `ConcurrencyLimiter` do ASP.NET Core para as rotas de análise (inicial: 10
   execuções simultâneas, NFR-004) e limitação de taxa por chave de isolamento com janela fixa.
 
@@ -568,8 +600,9 @@ seria escolhido por ser o mais recente.
      de códigos, como ICMS, ICMS-ST, IPI, PIS, COFINS, ISSQN, IBS, CBS e IS).
   Cada item guarda a origem (`execucaoId` ou declaração, com `sessaoId` e data — FR-055b).
 - **Gravação (FR-057)**: só pelo caso de uso, na etapa 9, a partir dos documentos e achados
-  determinísticos da execução, e pelo endpoint de preferências ou pelos metadados `preferencias` do
-  A2A (declaração explícita e estruturada; nunca extraída do texto livre pela IA). Operações
+  determinísticos da execução, e pelo endpoint de preferências do canal direto (declaração explícita
+  e estruturada; nunca extraída do texto livre pela IA). O contrato SOFIA v1.0 não tem campo de
+  preferências. Operações
   idempotentes por execução (a mesma execução não conta duas vezes).
 - **Leitura (FR-058)**: pelo `ContextoUsuarioProvider` (R-07), como dado não confiável e delimitado,
   com limite de itens; não entra como evidência nem altera achados.
@@ -580,14 +613,23 @@ seria escolhido por ser o mais recente.
 - **Alternativas**: guardar o contexto dentro da sessão do MAF (rejeitado: mistura histórico e
   contexto, contra o P15); deixar o LLM resumir o usuário ao fim de cada conversa (rejeitado: FR-057).
 
-### R-32 — Contrato com a SOFIA provisório (DP-27)
+### R-32 — Contrato com a SOFIA: contrato SOFIA v1.0 (DP-27 resolvida)
 
-- **Decisão**: o contrato A2A é uma proposta v1 provisória, versionada e própria deste projeto,
-  validada pelo Sofia.Simulator. O núcleo do agente é testado pelo canal direto, sem depender da
-  SOFIA. Nas tarefas, o canal A2A e o simulador vêm depois do núcleo REST (leitura, identificação,
-  seleção de pacote, XSD, totalizadores, parecer, memória, contexto e custos).
-- **Justificativa**: a SOFIA ainda não chama agentes externos; o adaptador A2A isola o caso de uso de
-  mudanças no contrato.
+- **Decisão**: o canal A2A fala só o contrato SOFIA v1.0 da INFIS
+  ([contracts/sofia-a2a.md](./contracts/sofia-a2a.md) e os dois JSON Schemas), que cobre a análise
+  de documentos com pergunta. Perguntas sem documentos, continuidade de sessão, consulta de
+  execução, preferências e aprovação ficam no canal direto. O núcleo do agente continua testado pelo
+  canal direto; nas tarefas, o canal A2A e o simulador vêm depois do núcleo REST.
+- **Identificação (D-05)**: chamador padrão `sofia` (`A2A:ChamadorPadrao`); usuário pelo
+  `usuario.nome`, com `usuarioId = "nome-sha256:<hex>"` do nome normalizado e o nome persistido na
+  sessão e na execução (data-model §0). Com o ADR da DP-10, a identificação passa à credencial de
+  serviço.
+- **`idAgente`**: `agente-auditoria-nfe` (`A2A:IdAgente`); o `agente-fiscal` da referência
+  colidiria no registry da SOFIA.
+- **Justificativa**: contrato oficial da turma; o adaptador A2A isola o caso de uso de mudanças no
+  contrato.
+- **Alternativas**: manter o contrato provisório ao lado do SOFIA v1.0 (dois contratos no mesmo
+  canal, sem cliente para o provisório).
 
 ### R-33 — Lições do AgenteFinanceiro (mesma versão do MAF e do SDK A2A)
 
@@ -596,11 +638,11 @@ implementação, aplicáveis aqui:
 
 | ID | Achado | Aplicação neste projeto |
 | -- | ------ | ----------------------- |
-| V-06 | No A2A 1.0.0-preview3, `TaskProjection.Apply` não copia os metadados de um evento de status para `AgentTask.Metadata`, e um evento `Task` substitui o estado inteiro da tarefa | A v1 não usa tarefas A2A (D-04); os metadados vão na mensagem de resposta. Se tarefas forem ativadas, publicar um snapshot da tarefa com metadados antes do status final |
+| V-06 | No A2A 1.0.0-preview3, `TaskProjection.Apply` não copia os metadados de um evento de status para `AgentTask.Metadata`, e um evento `Task` substitui o estado inteiro da tarefa | Sem efeito no contrato SOFIA v1.0: o resultado vai no Artifact, não em metadados. O manipulador não publica evento `Task` depois do Artifact, para não apagá-lo; o teste de contrato confere o Artifact na Task final |
 | V-07 | `dotnet test` em modo VSTest falha com xUnit v3 no SDK .NET 10 | `global.json` com `"test": { "runner": "Microsoft.Testing.Platform" }`; comandos com `--project` e filtros `--filter-trait`/`--filter-not-trait` |
 | V-08 | `AgentSessionStore` é experimental no MAF 1.26 (`MAAI001`) | Supressão pontual de `MAAI001` nos projetos que usam o store (seção 1) |
-| V-09 | `A2A.AgentSkill` tem o mesmo nome de `Microsoft.Agents.AI.AgentSkill` | No `Api.Agente`, referenciar os tipos do SDK A2A com `global::A2A.` |
-| V-10 | O `A2AServer` recusa mensagens para tarefas encerradas com `UnsupportedOperation` antes de chamar o handler | Sem efeito na v1 (sem tarefas e sem decisão de aprovação por A2A); registrado para quando tarefas forem ativadas |
+| V-09 | `A2A.AgentSkill` tem o mesmo nome de `Microsoft.Agents.AI.AgentSkill` | No `Api.Agente`, referenciar os tipos do SDK A2A com `global::A2A.` (e os do v0.3 com `global::A2A.V0_3.`) |
+| V-10 | O `A2AServer` recusa mensagens para tarefas encerradas com `UnsupportedOperation` antes de chamar o handler | Cada solicitação SOFIA cria uma Task nova; mensagem com `taskId` de Task encerrada recebe o erro do SDK, coberto por teste de contrato |
 
 Outros padrões reaproveitados: `IChatClient` dublê com roteiro fixo, `WebApplicationFactory`,
 testes de arquitetura, health checks, `SemSegredosTests` e a ordem de tarefas do `tasks.md`.
@@ -768,57 +810,68 @@ ter a mesma estrutura e os mesmos ids de executores; agentes dentro de workflows
 
 ### 3.9 A2A — servidor
 
-```csharp
-builder.Services.AddKeyedSingleton<AIAgent>("auditoria-nfe", (sp, _) => /* AgenteAuditoriaNFe */);
-builder.Services.AddKeyedSingleton<AgentSessionStore>("auditoria-nfe", (sp, _) => /* store MongoDB */);
-builder.AddA2AServer("auditoria-nfe", o => o.AgentRunMode = AgentRunMode.DisallowBackground);
+Fonte: repositório `a2aproject/a2a-dotnet`, tag `v1.0.0-preview3` (`src/A2A`, `src/A2A.AspNetCore`
+e `src/A2A.V0_3Compat`). Forma das APIs, sem código de aplicação:
 
-app.MapA2AHttpJson("auditoria-nfe", "/a2a/auditoria-nfe");   // POST .../message:send e :stream
-app.MapA2AJsonRpc("auditoria-nfe", "/a2a/auditoria-nfe");
+```csharp
+builder.Services.AddSingleton<ITaskStore, InMemoryTaskStore>();
+builder.Services.AddSingleton<IAgentHandler, ManipuladorSofiaA2A>();
+builder.Services.AddSingleton<IA2ARequestHandler>(sp => new A2AServer(
+    sp.GetRequiredService<IAgentHandler>(), sp.GetRequiredService<ITaskStore>() /* , ... */));
+
+var handler = app.Services.GetRequiredService<IA2ARequestHandler>();
+app.MapA2AWithV03Compat(handler, "/a2a/auditoria-nfe");              // JSON-RPC v0.3 e v1.0
+app.MapAgentCardGetWithV03Compat(handler, () => Task.FromResult(fabrica.Criar()),
+    blendedCard: false);                                             // GET /.well-known/agent-card.json
+
+// No manipulador (IAgentHandler.ExecuteAsync(RequestContext, AgentEventQueue, CancellationToken)):
+var updater = new TaskUpdater(eventQueue, contexto.TaskId, contexto.ContextId);
+await updater.SubmitAsync(ct);
+await updater.StartWorkAsync(ct);
+await updater.AddArtifactAsync(/* Artifact "analise-sofia-v1" com TextPart do resultado */, ct);
+await updater.CompleteAsync(ct);   // ou FailAsync(mensagem "ERR-007: …") sem IDs válidos
 ```
 
-Componentes substituíveis por serviço com chave (nome do agente): `IAgentHandler` (padrão
-`A2AAgentHandler`), `AgentSessionStore` (padrão `InMemoryAgentSessionStore`, só para
-desenvolvimento), `ITaskStore` (padrão `InMemoryTaskStore`). Com um `AgentIsolationKeyProvider`
-registrado, o session store e o task store são envolvidos por decoradores de isolamento em modo
-estrito; na v1 ele não é registrado (R-08). As sessões seguem o `contextId` do A2A. `AgentRunMode`:
-`DisallowBackground` (padrão), `AllowBackgroundIfSupported`, `AllowBackgroundWhen(...)`; respostas em
-segundo plano ainda não são suportadas no hosting A2A.
+A camada `V0_3Compat` traduz requisições e respostas v0.3 para os tipos do SDK 1.0 e mapeia
+`ReturnImmediately = !Blocking`. Os nomes exatos dos parâmetros DEVEM seguir a versão fixada; o
+spike de validação (R-11) e os testes de contrato conferem o comportamento.
 
 ### 3.10 Agent Card
 
 ```csharp
-app.MapWellKnownAgentCard(new AgentCard
+new AgentCard
 {
-    Name = "...", Description = "...", Version = "...",
-    DefaultInputModes = [...], DefaultOutputModes = [...],
-    Capabilities = new() { /* streaming, extensões */ },
-    Skills = [ new global::A2A.AgentSkill { /* id, nome, descrição, tags, exemplos */ } ],
+    Name = "AgenteAuditoriaNFe", Description = "...", Version = "...",
+    DefaultInputModes = ["text"], DefaultOutputModes = ["text"],
+    Capabilities = new() { Streaming = false, PushNotifications = false,
+        Extensions = [ /* urn:infis:sofia:contrato, required = false, params do contrato §2 */ ] },
+    Skills = [ new global::A2A.AgentSkill { Id = "analisar_documentos", /* nome, descrição, tags, exemplos */ } ],
     SupportedInterfaces =
     [
-        new AgentInterface { Url = "...", ProtocolBinding = ProtocolBindingNames.HttpJson, ProtocolVersion = "1.0" },
+        new AgentInterface { Url = "{A2A:UrlPublica}/a2a/auditoria-nfe", ProtocolBinding = ProtocolBindingNames.JsonRpc, /* ... */ },
     ],
-});
-// Publicado em GET /.well-known/agent-card.json; um card por host.
+};
+// Entregue por MapAgentCardGetWithV03Compat, que converte para v0.3 (url, preferredTransport,
+// protocolVersion) conforme o cabeçalho A2A-Version.
 ```
 
-`MapWellKnownAgentCard` vem do pacote `A2A.AspNetCore` (SDK A2A), e não do MAF. Os nomes exatos das
-propriedades de extensões DEVEM seguir o SDK 1.0.0-preview3 fixado; o teste de contrato TS-029 valida
-o card publicado.
+O card é montado nos tipos do SDK 1.0 e convertido pelo `V03TypeConverter`. Os nomes exatos das
+propriedades DEVEM seguir o SDK fixado; o teste de contrato TS-029 valida o card publicado no
+formato v0.3 contra o contrato §2.
 
 ### 3.11 A2A — cliente
 
+Pacote `A2A.V0_3` 1.0.0-preview3 (cliente oficial do perfil v0.3):
+
 ```csharp
-A2ACardResolver resolver = new(new Uri(urlAgente));
-AgentCard card = await resolver.GetAgentCardAsync();
-AIAgent remoto = await resolver.GetAIAgentAsync(options: new A2AClientOptions
+var resolver = new global::A2A.V0_3.A2ACardResolver(new Uri(urlAgente));
+var card = await resolver.GetAgentCardAsync();
+var cliente = new global::A2A.V0_3.A2AClient(new Uri(card.Url));
+var resposta = await cliente.SendMessageAsync(new MessageSendParams
 {
-    PreferredBindings = [ProtocolBindingNames.HttpJson],
+    Message = /* role user, messageId, uma TextPart com a SolicitacaoAnaliseSofia em JSON */,
 });
-AgentSession sessao = await remoto.CreateSessionAsync();
-AgentResponse resposta = await remoto.RunAsync(mensagemComTextoEArquivos, sessao);
-// Alternativas: card.AsAIAgent(options: ...); new A2AClient(uri).AsAIAgent(name:, description:).
-// Binding padrão: HTTP+JSON, com JSON-RPC como alternativa.
+// resposta é a Task final: status.state, artifacts["analise-sofia-v1"].parts[0].text.
 ```
 
 ### 3.12 MCP — cliente
@@ -839,11 +892,11 @@ IList<McpClientTool> ferramentas = await cliente.ListToolsAsync();
 | Risco | Impacto | Mitigação |
 | ----- | ------- | --------- |
 | Sem autenticação na v1 (D-05) | Qualquer processo com acesso à porta pode enviar solicitações, se passar por outro usuário e aprovar recomendações | Só `Development`, portas em `127.0.0.1`, dados sintéticos, card declarando ausência de autenticação; D-05 encerrado antes de qualquer implantação ou da SOFIA real |
-| Pacotes A2A e hosting em pré-lançamento | Mudanças incompatíveis entre versões | Versões fixadas; testes de contrato A2A; atualização em PR próprio |
-| Respostas em segundo plano não suportadas no hosting A2A | FR-046 e TS-033 parcialmente atendidos | Desvio D-04; análises dentro de 2 min (NFR-001); reavaliar a cada versão do MAF |
-| `contextId` reutilizado por outro usuário | Acesso a sessão de outro usuário | Sessão A2A só com mapa de chave para `sessaoId`; conferência da chave no caso de uso; TS-023, TS-054 e SC-009 |
-| Contrato com a SOFIA ainda não acordado (DP-27) | Retrabalho do adaptador A2A | Núcleo testado pelo canal direto; A2A no fim das tarefas; contrato versionado |
-| `DataContent` de resposta vira parte de arquivo | Cliente precisa decodificar o envelope | Contrato define `mediaType` e nome do arquivo; o simulador valida |
+| Pacotes A2A e `A2A.V0_3Compat` em pré-lançamento | Mudanças incompatíveis entre versões | Versões fixadas; spike de validação; testes de contrato do card, da Message e da Task; atualização em PR próprio |
+| Task devolvida só no estado final | Estados intermediários não observáveis (FR-046) | Desvio D-04 revisado; tempo máximo de 120 s (ERR-016); a SOFIA usa tempo limite ≥ 150 s |
+| SOFIA envia `blocking: false` | Resposta com o retrato inicial da Task, sem resultado | Regra no contrato §3.1; teste de contrato com e sem `configuration` |
+| Identificação pelo nome (D-05) | Homônimos compartilham o contexto do usuário; nome é dado pessoal | Nome fora de logs, do LLM e do contexto; hash no isolamento; TS-067; fim do D-05 antes da SOFIA real |
+| Tasks só em memória | Perda das Tasks ao reiniciar; uma instância | `tasks/get` não é contratual; o resultado vai na resposta do `message/send` |
 | Checkpoints JSON locais | Perda em contêiner sem volume; sem suporte a várias instâncias | Volume obrigatório no compose; limitação registrada; uma instância |
 | Tabela de vigência sujeita a ajustes | Pacote errado para alguma data | Manifesto versionado; TS-050 e SC-011 com um XML por período; pendências P1 a P5 da tabela |
 | Concorrência sobre o `XmlSchemaSet` compilado | Erros intermitentes de validação sob carga | Teste de carga (NFR-004); pool por pacote se necessário |
@@ -859,8 +912,8 @@ IList<McpClientTool> ferramentas = await cliente.ListToolsAsync();
 | Memória e contexto do usuário (DP-01) | MongoDB, resolvida na constitution 2.0.0; ADR registra a decisão (R-08, R-31) |
 | Schemas oficiais e seleção (DP-03) | 19 pacotes versionados com manifesto; seleção pela data de referência (R-14) |
 | Catálogo de regras (DP-04) | Catálogo de totalizadores aprovado em 2026-11-04; arquivo JSON versionado (R-15) |
-| Protocolo A2A (DP-17) | A2A 1.0 pelo SDK 1.0.0-preview3; HTTP+JSON e JSON-RPC (R-11) |
-| Contrato com a SOFIA (DP-27) | Proposta v1 provisória; continua pendente de acordo (R-32) |
+| Protocolo A2A (DP-17) | Perfil A2A v0.3.x (JSON-RPC, `message/send`) pelo SDK 1.0.0-preview3 com `A2A.V0_3Compat` (R-11); autenticação continua na DP-10 |
+| Contrato com a SOFIA (DP-27) | Contrato SOFIA v1.0, resolvido na constitution 2.2.0; ADR-0011 proposto (R-32) |
 | Estrutura física (DP-19) | Projetos separados (R-28) |
 | Topologia PostgreSQL (DP-16) | Banco e usuário exclusivos do Api.Agente (R-16) |
 | Tabela de preços (DP-22) | Arquivo versionado preenchido a partir da fonte oficial (R-16) |

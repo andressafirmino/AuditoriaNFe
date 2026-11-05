@@ -43,6 +43,9 @@
   identificação da NF-e e recusa da NFC-e (FR-007a, FR-008), contexto do usuário com conteúdo,
   origem e retenção de 90 dias (FR-055 a FR-060), usuário padrão "anonimo" (FR-052c) e contrato
   SOFIA provisório (DP-27).
+- Esclarecimentos de 2026-11-05: contrato SOFIA v1.0 no canal A2A, só análise de documentos com
+  pergunta (FR-043a a FR-043g, FR-044a), usuário identificado pelo nome (FR-052d) e DP-27 resolvida
+  (constitution 2.2.0, ADR-0011 proposto).
 - A autenticação foi adiada pelo desvio temporário D-05 (constitution 5.2); o desvio DEVE ser
   registrado e aprovado na seção "Complexity Tracking" do `plan.md` (constitution 8.3).
 - Os itens de detalhes de implementação seguem desmarcados de propósito: as restrições técnicas

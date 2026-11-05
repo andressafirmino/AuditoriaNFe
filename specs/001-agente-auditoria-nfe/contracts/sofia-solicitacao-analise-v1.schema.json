@@ -1,0 +1,55 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:infis:sofia:solicitacao-analise:1.0",
+  "title": "SolicitacaoAnaliseSofia v1.0",
+  "description": "Solicitação enviada pela SOFIA em TextPart de uma Message A2A (contracts/sofia-a2a.md §3.2). Os limites marcados como do agente vêm da configuração ou da spec, não do padrão da turma.",
+  "type": "object",
+  "required": ["versaoContrato", "idExecucao", "idSolicitacao", "usuario", "pergunta", "documentos"],
+  "properties": {
+    "versaoContrato": { "const": "1.0" },
+    "idExecucao": { "type": "string", "format": "uuid" },
+    "idSolicitacao": { "type": "string", "format": "uuid" },
+    "usuario": {
+      "type": "object",
+      "required": ["nome"],
+      "properties": {
+        "nome": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200,
+          "pattern": "\\S",
+          "description": "Dado pessoal. Limite de 200 caracteres definido pelo agente."
+        }
+      }
+    },
+    "pergunta": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 4000,
+      "pattern": "\\S",
+      "description": "Limite de 4.000 caracteres definido pelo agente (mesmo do canal direto)."
+    },
+    "documentos": {
+      "type": "array",
+      "minItems": 1,
+      "description": "Quantidade máxima e soma dos bytes UTF-8 de texto limitadas por Limites:QuantidadeArquivos e Limites:TamanhoTotalBytes; idDocumento único na solicitação (validados pelo agente).",
+      "items": {
+        "type": "object",
+        "required": ["idDocumento", "nome", "texto"],
+        "properties": {
+          "idDocumento": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "\\S" },
+          "nome": { "type": "string", "minLength": 1, "pattern": "\\S" },
+          "tipo": { "type": "string", "description": "MIME informativo; o tipo real é decidido pelo conteúdo." },
+          "texto": { "type": "string", "minLength": 1 }
+        }
+      }
+    },
+    "contexto": {
+      "type": "object",
+      "properties": {
+        "idioma": { "type": "string" },
+        "instrucoes": { "type": "string", "description": "Dado não confiável; não é aplicado como instrução." }
+      }
+    }
+  }
+}

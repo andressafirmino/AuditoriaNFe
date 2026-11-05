@@ -1,7 +1,7 @@
 # Modelo de dados: Agente de Auditoria de NF-e (AuditoriaNFe)
 
-**Feature**: `001-agente-auditoria-nfe` | **Data**: 2026-10-29, revisado em 2026-11-04 |
-**Plano**: [plan.md](./plan.md)
+**Feature**: `001-agente-auditoria-nfe` | **Data**: 2026-10-29, revisado em 2026-11-04 e
+2026-11-05 | **Plano**: [plan.md](./plan.md)
 
 Este documento detalha as entidades da seção "Key Entities" da [spec](./spec.md): campos,
 relacionamentos, validações, estados e onde cada uma é persistida. Os nomes são os do Domínio
@@ -12,6 +12,11 @@ seleção do pacote de schema pela data de referência, pacote de schema e vigê
 com versão e vigência (catálogo aprovado), contexto do usuário e registro de consumo ampliado.
 Depois da análise de consistência das tarefas: chamadas de ferramentas, trechos consultados e regras
 aplicadas registrados na execução, para a rastreabilidade do NFR-008.
+
+**Revisão de 2026-11-05 (contrato SOFIA v1.0, ADR-0011)**: identificação A2A pelo nome do usuário
+(§0), `usuarioNome` na sessão e na execução, IDs da SOFIA na execução, `idDocumento` no arquivo
+recebido e DTOs do contrato SOFIA com o mapeamento para o parecer (§18). A sessão deixa de guardar
+o `contextId` A2A, e a sessão do hosting A2A do MAF deixa de existir.
 
 ## Convenções
 
@@ -47,17 +52,26 @@ RegraConteudo (R, por versão) ──< Achado (inconsistência de negócio)
 
 ## 0. IdentificacaoSolicitante (E, derivada de cada solicitação)
 
-Identidade informada pelo chamador, sem verificação na versão 1 (desvio D-05; FR-052a, FR-052c).
+Identidade informada pelo chamador, sem verificação na versão 1 (desvio D-05; FR-052a, FR-052c,
+FR-052d).
 
 | Campo | Tipo | Classe | Regras |
 | ----- | ---- | ------ | ------ |
-| `usuarioId` | string | Pessoal | Metadado `usuarioId` (A2A) ou cabeçalho `X-Usuario-Id` (REST); até 128 caracteres de `[A-Za-z0-9._:@-]`; ausente → `"anonimo"` |
-| `chamadorId` | string | Interno | Metadado `chamadorId` (A2A) ou cabeçalho `X-Chamador-Id` (REST); mesmo formato; ausente → `"nao-informado"` |
-| `usuarioIdentificado` | bool | Interno | `false` quando `usuarioId = "anonimo"` |
+| `usuarioId` | string | Pessoal | REST: cabeçalho `X-Usuario-Id`, até 128 caracteres de `[A-Za-z0-9._:@-]`, ausente → `"anonimo"`. A2A: `"nome-sha256:"` + SHA-256 hexadecimal minúsculo do `usuario.nome` normalizado (abaixo) |
+| `chamadorId` | string | Interno | REST: cabeçalho `X-Chamador-Id`, mesmo formato, ausente → `"nao-informado"`. A2A: configuração `A2A:ChamadorPadrao` (inicial `"sofia"`) |
+| `usuarioNome` | string? | Pessoal | Só no A2A: `usuario.nome` sem espaços nas pontas, até 200 caracteres. Persistido na sessão e na execução; nunca em logs, no envio ao LLM nem no contexto do usuário |
+| `usuarioIdentificado` | bool | Interno | `false` quando `usuarioId = "anonimo"`; sempre `true` no A2A (o nome é obrigatório) |
 | `chaveIsolamento` | string (SHA-256 hex) | Interno | Hash de `chamadorId` + separador + `usuarioId`; usada em sessões, contexto do usuário, limitação de taxa e logs |
 
-**Validações**: formato inválido → ERR-007 (A2A) ou resposta 400 com ERR-007 (REST), sem execução.
-Com o fim do D-05, `chamadorId` passa a vir da credencial de serviço autenticada, e não da mensagem.
+**Normalização do nome (A2A)**: Unicode NFC, espaços nas pontas removidos, sequências de espaços
+internos reduzidas a um e minúsculas invariantes. O hash é calculado sobre os bytes UTF-8 do nome
+normalizado. O `usuarioNome` guardado é o original sem espaços nas pontas, sem as demais
+normalizações. Nomes que normalizam igual compartilham o contexto do usuário (risco do D-05).
+
+**Validações**: formato inválido → resposta 400 com ERR-007 (REST), sem execução; nome vazio ou
+acima de 200 caracteres → resultado A2A com status `erro` e ERR-007. Com o fim do D-05, o
+`chamadorId` passa a vir da credencial de serviço autenticada, e não da mensagem nem da
+configuração.
 
 ## 1. Sessao (M)
 
@@ -67,8 +81,8 @@ Contexto conversacional de um usuário (FR-036 a FR-042).
 | ----- | ---- | ------ | ------ |
 | `id` | GUID | Interno | Gerado na primeira solicitação sem sessão |
 | `chaveIsolamento` | string | Interno | Da `IdentificacaoSolicitante`; toda leitura confere a chave (FR-039) |
-| `usuarioId` / `chamadorId` | string | Pessoal / Interno | Registrados como informados (FR-052a) |
-| `contextoA2A` | string? | Interno | `contextId` A2A associado, quando o canal for A2A |
+| `usuarioId` / `chamadorId` | string | Pessoal / Interno | Registrados como informados ou derivados (FR-052a, FR-052d) |
+| `usuarioNome` | string? | Pessoal | Só em sessões criadas pelo A2A (FR-052d); nunca em log |
 | `estado` | enum | Interno | `Ativa`, `Expirada`, `Encerrada` |
 | `criadaEm` / `ultimaAtividadeEm` | data-hora | Interno | Atualizadas pelo sistema a cada solicitação aceita |
 | `expiraApos` | duração | Interno | Configuração `Sessao:ExpiracaoInatividade` (inicial 24 h) |
@@ -78,8 +92,8 @@ Contexto conversacional de um usuário (FR-036 a FR-042).
 | `execucoes` | lista de ids | Interno | Ordem cronológica |
 | `historicoAgente` | documento serializado | Interno | `AgentSession` do agente interno (histórico e estado dos providers), isolada pela chave |
 
-**Sessão do hosting A2A** (coleção própria, via `AgentSessionStore`): guarda apenas o mapa
-`chaveIsolamento → sessaoId` do `contextId`, sem histórico nem conteúdo (research R-08).
+Sessões criadas pelo A2A recebem uma única execução (o contrato SOFIA v1.0 não tem continuidade) e
+seguem a mesma expiração e retenção das demais.
 
 **Validações**: acesso só com a mesma `chaveIsolamento` (senão ERR-005, sem revelar existência);
 estado `Expirada` quando `agora - ultimaAtividadeEm > expiraApos` (ERR-006); `Encerrada` recusa novas
@@ -102,9 +116,11 @@ Processamento de uma solicitação (FR-054, NFR-008).
 | Campo | Tipo | Classe | Regras |
 | ----- | ---- | ------ | ------ |
 | `id` | GUID | Interno | Gerado na recepção |
-| `correlacaoId` | string? | Interno | Recebido do chamador e devolvido sem alteração (FR-047); máx. 128 caracteres |
+| `correlacaoId` | string? | Interno | REST: recebido do chamador e devolvido sem alteração; A2A: o `idSolicitacao` da SOFIA (FR-043c); máx. 128 caracteres |
+| `idExecucaoSofia` / `idSolicitacaoSofia` | GUID? | Interno | Só no A2A: `idExecucao` e `idSolicitacao` recebidos, devolvidos sem alteração no resultado (FR-043c, FR-043e). Retentativa com o mesmo `idSolicitacao` gera nova execução com os mesmos valores |
 | `sessaoId` | GUID | Interno | Sessão criada ou continuada |
 | `usuarioId` / `chamadorId` / `usuarioIdentificado` | string / string / bool | Pessoal / Interno / Interno | Da `IdentificacaoSolicitante` |
+| `usuarioNome` | string? | Pessoal | Só no A2A (FR-052d); nunca em log nem no envio ao LLM |
 | `canal` | enum | Interno | `Direto`, `A2A` |
 | `tipo` | enum | Interno | `AnaliseLote`, `Pergunta`, `AnaliseComPergunta`, `ConsultaRecomendacoes` |
 | `pergunta` | string? | Pessoal* | Guardada no histórico da sessão; nunca em log. *Pode conter dados pessoais |
@@ -140,7 +156,8 @@ determinísticos entregues). `Falhou` registra as etapas concluídas e as não e
 | Campo | Tipo | Classe | Regras |
 | ----- | ---- | ------ | ------ |
 | `nome` | string | Interno | Nome informado; saneado, sem caminho |
-| `tamanhoBytes` | long | Interno | Somado para o limite total (FR-004) |
+| `idDocumento` | string? | Interno | Só no A2A: `documentos[].idDocumento` da SOFIA, até 128 caracteres, único na execução; usado em `achados[].idDocumentos` e nas observações (FR-043b, FR-043f) |
+| `tamanhoBytes` | long | Interno | Somado para o limite total (FR-004); no A2A, bytes UTF-8 do `texto` |
 | `hashSha256` | string | Fiscal | Calculado sobre os bytes recebidos |
 | `bemFormado` | bool | Interno | Pelo conteúdo, não pela extensão (FR-006) |
 | `identificacao` | `IdentificacaoDocumento`? | Fiscal | Ver abaixo (FR-007, FR-007a) |
@@ -428,7 +445,7 @@ FR-060, P15, constitution 4.7). Não existe para o usuário "anonimo" (FR-052c).
   documentos e texto livre NÃO DEVEM ser gravados (FR-055a).
 - Só documentos aprovados no layout contam em `cnpjsAuditados`; só achados `Deterministica` contam em
   `achadosRecorrentes` (FR-055a, FR-057).
-- Gravação só pelo caso de uso (etapa 9) e pelo endpoint ou metadado de preferências; nenhuma
+- Gravação só pelo caso de uso (etapa 9) e pelo endpoint de preferências do canal direto; nenhuma
   ferramenta da IA tem acesso (FR-057).
 - Leitura ignora documento com `expiraEm` vencido, mesmo antes da remoção pelo TTL.
 - Listas limitadas por configuração (`ContextoUsuario:MaxCnpjs`, `ContextoUsuario:MaxAchados`),
@@ -491,7 +508,7 @@ ao resultado; todo {chave, caminho} existe nos dados extraídos e o valor confer
 existe; nenhum número com formato monetário aparece no texto sem estar em `valoresCitados`. Falha
 gera retentativa (até `Ia:MaxTentativas`) e, esgotadas as tentativas, ERR-015.
 
-## 16. Envelope de resposta v1 (E, devolvido nos dois canais)
+## 16. Envelope de resposta v1 (E, devolvido pelo canal direto)
 
 | Campo | Origem | Regras |
 | ----- | ------ | ------ |
@@ -509,13 +526,64 @@ gera retentativa (até `Ia:MaxTentativas`) e, esgotadas as tentativas, ERR-015.
 | `metadados` | Sistema | `modelo`, `duracaoMs`, `consumo` (tokens e custo, NULL quando desconhecidos), `versoes` |
 
 O schema JSON do envelope está em [contracts/api-agente.openapi.yaml](./contracts/api-agente.openapi.yaml)
-(`components.schemas.EnvelopeV1`) e é referenciado pelo contrato A2A
-([contracts/sofia-a2a.md](./contracts/sofia-a2a.md)).
+(`components.schemas.EnvelopeV1`). O canal A2A não devolve o envelope: o adaptador traduz o mesmo
+resultado do caso de uso para o `ResultadoAnaliseSofia` (§18).
 
 ## 17. Agent Card e Solicitação do simulador
 
-- **Agent Card**: definido em [contracts/sofia-a2a.md](./contracts/sofia-a2a.md); gerado a partir da
-  configuração (limites, versão), sem segredos (FR-044, FR-045) e declarando a ausência de
-  autenticação na v1 (FR-052b).
+- **Agent Card**: definido em [contracts/sofia-a2a.md](./contracts/sofia-a2a.md) §2; gerado a
+  partir da configuração (`A2A:UrlPublica`, `A2A:IdAgente`, limites, versão), sem segredos (FR-044,
+  FR-044a, FR-045) e declarando a ausência de autenticação na v1 (FR-052b).
 - **Solicitação do simulador**: não é persistida pelo agente; o Sofia.Simulator mantém apenas em
-  memória a pergunta, os XMLs de exemplo sintéticos e o envelope recebido, e os exibe no console.
+  memória a `SolicitacaoAnaliseSofia` (pergunta, nome fictício, XMLs de exemplo sintéticos) e o
+  `ResultadoAnaliseSofia` recebido, e os exibe no console.
+
+## 18. Contrato SOFIA v1.0 (E, DTOs do adaptador A2A)
+
+DTOs da borda (`Api.Agente/A2A/Sofia`), sem persistência própria: o que é guardado vai para a
+execução, a sessão e os arquivos recebidos. Schemas normativos:
+[sofia-solicitacao-analise-v1.schema.json](./contracts/sofia-solicitacao-analise-v1.schema.json) e
+[sofia-resultado-analise-v1.schema.json](./contracts/sofia-resultado-analise-v1.schema.json).
+Serialização JSON em camelCase, UTF-8, sem `null` em campos opcionais ausentes da solicitação;
+campos desconhecidos são ignorados.
+
+**`SolicitacaoAnaliseSofia` → caso de uso**:
+
+| Campo SOFIA | Destino | Regra |
+| ----------- | ------- | ----- |
+| `versaoContrato` | Validação | Igual a `"1.0"` (ERR-007) |
+| `idExecucao` / `idSolicitacao` | `Execucao.idExecucaoSofia` / `idSolicitacaoSofia`; `correlacaoId` = `idSolicitacao` | UUID; inválido → Task `failed` (FR-043d) |
+| `usuario.nome` | `IdentificacaoSolicitante` (§0) | Até 200 caracteres |
+| `pergunta` | `Execucao.pergunta` | Até 4.000 caracteres; tipo `AnaliseComPergunta` |
+| `documentos[]` | `ArquivoRecebido` (§3) | `nome` → `nome`; bytes UTF-8 de `texto` → conteúdo; `idDocumento` → `idDocumento`; `tipo` ignorado na identificação |
+| `contexto.idioma` / `contexto.instrucoes` | Não usados | `instrucoes` é dado não confiável (FR-053) |
+
+**Parecer e execução → `ResultadoAnaliseSofia`**:
+
+| Campo SOFIA | Origem | Regra |
+| ----------- | ------ | ----- |
+| `versaoContrato` | Constante | `"1.0"` |
+| `idExecucao` / `idSolicitacao` | `Execucao.idExecucaoSofia` / `idSolicitacaoSofia` | Sem alteração |
+| `agente.idAgente` / `agente.nome` | `A2A:IdAgente` / nome do card | |
+| `status` | `Execucao.estado`, `Parecer.resultadoGeral`, `Parecer.documentos` | `concluido`: `Concluida`, todos os documentos com as duas validações realizadas e resultado diferente de `Inconclusiva`. `parcial`: `Concluida` com documento não analisado ou validação não realizada, ou `Inconclusiva`. `erro`: `Rejeitada` ou `Falhou` |
+| `analise` | `Parecer.resumoTextual` | Em `erro`, a mensagem do erro; nunca vazia |
+| `achados[]` | `Parecer.achados` | Um por achado, na ordem (abaixo) |
+| `observacoes[]` | `Parecer.documentos`, `limitacoes`, `validacoesNaoRealizadas`, `revisaoHumana`, `recomendacoes`, `Execucao.id` | Na ordem do contrato §5.5 |
+| `erro` | `Execucao.erro` | `{codigo, mensagem}` só em `erro`; senão `null` |
+
+**`Achado` → `achados[]`**:
+
+| Campo SOFIA | Origem | Regra |
+| ----------- | ------ | ----- |
+| `idAchado` | `Achado.id` | GUID em texto |
+| `descricao` | `Achado.categoria` + `descricao` | Rótulo da categoria em pt-BR seguido da descrição |
+| `idDocumentos` | `ArquivoRecebido.idDocumento` do arquivo do achado | `[]` para achados do lote; só IDs recebidos |
+| `evidencias` | `Achado.evidencias` e campos do achado | Texto montado pelo sistema por tipo: `CampoXml` (caminho e valor), `Calculo` (valor calculado, regra e versão), `RegraCatalogo` (regra, versão e catálogo), `TrechoManual` (documento, versão e trecho); `[]` sem evidência |
+| `severidade` | `Achado.severidade` | `Alta` → `alta`, `Media` → `media`, `Baixa` → `baixa`; `Informativa` → omitido |
+
+**Falhas sem resultado**: mensagem sem exatamente uma parte de texto, texto que não é objeto JSON ou
+sem `idExecucao` e `idSolicitacao` UUID → nenhuma execução é criada; a Task termina `failed` com
+"ERR-007: …" (FR-043d). As demais violações do contrato são recusadas pelo validador do adaptador,
+antes do caso de uso e sem criar execução (como a resposta 400 do canal direto), e geram resultado
+com status `erro` e ERR-007, sem a linha do identificador interno nas observações. Os limites de
+tamanho e de quantidade (ERR-002, ERR-003) seguem o caso de uso, como no canal direto.

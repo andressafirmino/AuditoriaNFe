@@ -1,13 +1,19 @@
 # Implementation Plan: Agente de Auditoria de NF-e (AuditoriaNFe)
 
-**Branch**: `001-agente-auditoria-nfe` (PR para a `dev`; fluxo `feature → dev → main`, ADR-0008) | **Date**: 2026-10-29, revisado em 2026-11-04 | **Spec**: [spec.md](./spec.md)
+**Branch**: `001-agente-auditoria-nfe` (PR para a `dev`; fluxo `feature → dev → main`, ADR-0008) | **Date**: 2026-10-29, revisado em 2026-11-04 e 2026-11-05 | **Spec**: [spec.md](./spec.md)
 
 **Input**: Feature specification from `specs/001-agente-auditoria-nfe/spec.md` (esclarecida em
-2026-10-29 e 2026-11-04) e constitution 2.1.0
+2026-10-29, 2026-11-04 e 2026-11-05) e constitution 2.2.0
+
+**Revisão de 2026-11-05**: contrato SOFIA v1.0 no canal A2A (DP-27 resolvida na constitution 2.2.0,
+ADR-0011 proposto), servido pelo SDK A2A com a camada `A2A.V0_3Compat`; desvio D-04 revisado e novo
+desvio D-07, ambos pendentes de aprovação; Fases 8 e 9 das tarefas reescritas.
 
 **Artefatos desta etapa**: [research.md](./research.md), [data-model.md](./data-model.md),
 [contracts/api-agente.openapi.yaml](./contracts/api-agente.openapi.yaml),
-[contracts/sofia-a2a.md](./contracts/sofia-a2a.md),
+[contracts/sofia-a2a.md](./contracts/sofia-a2a.md) (com
+[sofia-solicitacao-analise-v1.schema.json](./contracts/sofia-solicitacao-analise-v1.schema.json) e
+[sofia-resultado-analise-v1.schema.json](./contracts/sofia-resultado-analise-v1.schema.json)),
 [contracts/contrato-ia-v1.schema.json](./contracts/contrato-ia-v1.schema.json),
 [contracts/consulta-manuais-mcp.md](./contracts/consulta-manuais-mcp.md),
 [contracts/ferramentas-agente.md](./contracts/ferramentas-agente.md),
@@ -34,14 +40,17 @@ cada usuário (CNPJs auditados, achados recorrentes e preferências declaradas) 
 tokens e custos de cada chamada no PostgreSQL e roda em Docker.
 
 A versão 1 não tem autenticação (desvio temporário D-05): o chamador informa o usuário e a própria
-identificação, sem verificação, e o agente só roda em ambiente local de testes. O contrato com a
-SOFIA é uma proposta v1 provisória (DP-27); por isso o núcleo é implementado e testado primeiro pelo
-canal direto, e o canal A2A e o Sofia.Simulator vêm por último.
+identificação, sem verificação, e o agente só roda em ambiente local de testes. O canal A2A fala o
+contrato SOFIA v1.0 (DP-27): a SOFIA envia, por `message/send` no perfil A2A v0.3, uma solicitação
+com o nome do usuário, a pergunta e os XMLs em texto, e recebe uma Task concluída com o resultado em
+um Artifact. O núcleo é implementado e testado primeiro pelo canal direto, e o canal A2A e o
+Sofia.Simulator vêm por último.
 
 Abordagem técnica: .NET 10 e ASP.NET Core 10; **Microsoft Agent Framework 1.26.0** (MAF, exigido
 pela constitution 2.0.0) para o agente (`ChatClientAgent` sobre `IChatClient` OpenAI), ferramentas
 por Function Calling, context providers, middleware, sessões e workflow de aprovação humana com
-checkpoints JSON locais; hosting A2A do MAF com o SDK oficial A2A 1.0; MongoDB para sessões,
+checkpoints JSON locais; servidor do SDK oficial A2A 1.0 com a camada `A2A.V0_3Compat` e
+manipulador próprio para o contrato SOFIA (desvio D-07); MongoDB para sessões,
 resultados e contexto do usuário; PostgreSQL para consumo e custos; ponto de integração MCP
 preparado e desabilitado (a Api.RAG chega na feature 002). O fluxo das nove etapas da constitution é
 orquestrado por código determinístico; o LLM nunca decide a ordem das etapas nem o resultado geral.
@@ -57,9 +66,9 @@ desde 2026-11-04, ao lado dos SDKs 9.0 e 11.0 RC; por isso o `global.json` é ob
 
 - `Microsoft.Agents.AI` 1.26.0, `Microsoft.Agents.AI.OpenAI` 1.26.0, `Microsoft.Agents.AI.Workflows`
 1.26.0
-- `Microsoft.Agents.AI.Hosting.A2A.AspNetCore` 1.26.0-preview.261023.1 (inclui `A2A` e
-`A2A.AspNetCore` 1.0.0-preview3), `Microsoft.Agents.AI.Hosting.AspNetCore`
-1.26.0-preview.261023.1, `Microsoft.Agents.AI.A2A` 1.26.0-preview.261023.1 (cliente)
+- `A2A`, `A2A.AspNetCore`, `A2A.V0_3Compat` e `A2A.V0_3` 1.0.0-preview3 (servidor, perfil v0.3 e
+cliente do simulador); `Microsoft.Agents.AI.Hosting.AspNetCore` 1.26.0-preview.261023.1. Os pacotes
+`Microsoft.Agents.AI.Hosting.A2A.AspNetCore` e `Microsoft.Agents.AI.A2A` saem da lista (research §1)
 - `Microsoft.Extensions.AI.OpenAI` 10.11.0 (SDK `OpenAI` ≥ 2.14.0)
 - `ModelContextProtocol.Core` 2.3.0
 - `MongoDB.Driver` 3.13.0; `Npgsql.EntityFrameworkCore.PostgreSQL` 10.0.3
@@ -67,7 +76,7 @@ desde 2026-11-04, ao lado dos SDKs 9.0 e 11.0 RC; por isso o `global.json` é ob
 `OpenTelemetry.Extensions.Hosting` 1.20.1
 - Sem pacote de autenticação na v1 (D-05)
 
-**Storage**: MongoDB (sessões, sessões serializadas do MAF, execuções, pareceres, recomendações,
+**Storage**: MongoDB (sessões, histórico serializado do agente interno, execuções, pareceres, recomendações,
 dados extraídos e contexto do usuário — sem XML original); PostgreSQL (schema `consumo`); arquivos
 JSON locais (checkpoints de aprovação, apenas demonstração); arquivos versionados no repositório
 (19 pacotes de schemas XSD oficiais com `manifesto.json`, catálogo de regras, catálogo de extração,
@@ -98,14 +107,15 @@ do Api.Agente enquanto os checkpoints forem arquivos locais; execução só loca
 D-05.
 
 **Scale/Scope**: uma API (Api.Agente) com 3 projetos de camada, 1 cliente de console e 1 projeto de
-testes; 3 habilidades A2A; 11 rotas REST de negócio; 19 pacotes de schema; cerca de 80 regras de
-totalizador (com versões); mais de 70 requisitos funcionais e 64 cenários de teste na spec.
+testes; 1 habilidade A2A (`analisar_documentos`); 11 rotas REST de negócio; 19 pacotes de schema;
+cerca de 80 regras de totalizador (com versões); mais de 70 requisitos funcionais e 67 cenários de
+teste na spec.
 
 ## Constitution Check
 
 *GATE: Must pass before Phase 0 research. Re-check after Phase 1 design.*
 
-Avaliação contra a constitution **2.1.0** (2026-11-04). Legenda: **Conforme**; **Desvio D-0x**
+Avaliação contra a constitution **2.2.0** (2026-11-05). Legenda: **Conforme**; **Desvio D-0x**
 (registrado e aprovado em Complexity Tracking); **Bloqueio** (impede as tarefas indicadas até a
 resolução); **N/A** (fora desta feature).
 
@@ -131,7 +141,7 @@ resolução); **N/A** (fora desta feature).
 | P15 Memória e contexto isolados | Sessão e contexto do usuário isolados pela chave de `chamadorId` + `usuarioId`; contexto separado do histórico; retenção de 90 dias por TTL; limite de itens enviados ao modelo; MongoDB registrado no ADR-0002. O isolamento usa identificação **informada e não verificada**                                                                    | Conforme, com o risco do D-05      |
 | P16 Observabilidade             | OpenTelemetry; `execucaoId` e `correlacaoId` em todos os logs; sem conteúdo sensível nem `usuarioId` em claro                                                                                                                                                                                                                                 | Conforme                           |
 | P17 Testes e avaliação          | Cenários TS automatizados; Testcontainers; um XML sintético por período de vigência; conjunto de avaliação                                                                                                                                                                                                                                    | Conforme                           |
-| P18 Contratos A2A/MCP           | Contrato A2A versionado (proposta provisória, DP-27); contrato MCP do lado consumidor; mesmo caso de uso nos dois canais. A regra "mesma autenticação nos dois canais" é cumprida com ausência de autenticação em ambos (D-05)                                                                                                                | Conforme (ver D-04 e D-05)         |
+| P18 Contratos A2A/MCP           | Contrato SOFIA v1.0 versionado, com JSON Schemas da solicitação e do resultado (DP-27); contrato MCP do lado consumidor; mesmo caso de uso nos dois canais. O A2A cobre só a análise com pergunta, como define o contrato; as demais operações ficam no canal direto. A regra "mesma autenticação nos dois canais" é cumprida com ausência de autenticação em ambos (D-05) | Conforme (ver D-04 e D-05)         |
 
 
 
@@ -141,7 +151,7 @@ resolução); **N/A** (fora desta feature).
 
 | Seção                             | Avaliação                                                                                                                                                                                                               | Situação                                                                        |
 | --------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------- |
-| 3.1 Plataforma                    | .NET 10, ASP.NET Core, OpenAI, MAF, PostgreSQL para custos, MongoDB para memória e contexto do usuário                                                                                                                  | Conforme                                                                        |
+| 3.1 Plataforma                    | .NET 10, ASP.NET Core, OpenAI, MAF, PostgreSQL para custos, MongoDB para memória e contexto do usuário. **Hospedagem A2A pelo servidor do SDK A2A**, e não pelo MAF, porque o hosting A2A do MAF não devolve Task com Artifact | **Desvio D-07** (pendente de aprovação)                                         |
 | 3.1 Nome da solução               | `AgenteAuditoriaNFe` (research R-27)                                                                                                                                                                                    | Conforme                                                                        |
 | 3.2 Serviços                      | Api.Agente com todas as responsabilidades exclusivas, inclusive o contexto do usuário; Api.RAG na feature 002                                                                                                           | Conforme (Api.RAG N/A)                                                          |
 | 3.3 Camadas                       | Endpoints → Aplicação → Domínio; Infraestrutura implementa abstrações. Abstrações do MAF e do Microsoft.Extensions.AI na Aplicação; OpenAI, MCP, A2A, MongoDB e Npgsql fora dela                                        | Conforme                                                                        |
@@ -169,7 +179,7 @@ resolução); **N/A** (fora desta feature).
 | ---------------------------------------------------------------------------- | --------------------------------------------------------- |
 | "Nenhum endpoint não público aceita solicitações sem credencial do chamador" | Não atendido na v1 — coberto pelo D-05                    |
 | "O CI está verde, e a revisão foi aprovada por pessoa diferente do autor"    | CI exigido; revisão pela própria autora — coberto pelo D-06 |
-| "Os desvios foram registrados conforme a seção 8.3"                          | D-03 a D-06 registrados e aprovados por Andressa Firmino em 2026-11-04 |
+| "Os desvios foram registrados conforme a seção 8.3"                          | D-03 a D-06 aprovados por Andressa Firmino em 2026-11-04; revisão do D-04 e D-07 registrados em 2026-11-05, pendentes de aprovação |
 | Demais itens                                                                 | Atendidos pelo desenho; verificação na implementação      |
 
 
@@ -192,7 +202,7 @@ resolução); **N/A** (fora desta feature).
 | DP-13 Retenção                     | Parcial: sessão (24 h) e contexto do usuário (90 dias) definidos pela spec; demais prazos no ADR-0005                                                                          |
 | DP-14 Minimização                  | Resolvida: ADR-0004 (a primeira chamada ao LLM com dados de documento DEVE seguir a política do ADR)                                                                           |
 | DP-16 Topologia PostgreSQL         | Resolvida (ADR-0006)                                                                                                                                                           |
-| DP-17 A2A                          | Resolvida para esta feature: A2A 1.0 pelo SDK fixado (ADR-0007)                                                                                                                |
+| DP-17 A2A                          | Resolvida para esta feature: perfil A2A v0.3.x do contrato SOFIA v1.0, pelo SDK 1.0.0-preview3 com `A2A.V0_3Compat` (ADR-0011, proposto); a autenticação segue na DP-10 |
 | DP-18 MCP                          | Adiada para a feature 002; contrato do consumidor em `contracts/consulta-manuais-mcp.md`                                                                                       |
 | DP-19 Estrutura                    | Resolvida: projetos separados (ADR-0001)                                                                                                                                       |
 | DP-20 Aprovadores e local dos ADRs | Resolvida na constitution 2.1.0: Andressa Firmino aprova constitution, desvios, ADRs e PRs enquanto for a única mantenedora; ADRs em `docs/adr/`                               |
@@ -200,15 +210,19 @@ resolução); **N/A** (fora desta feature).
 | DP-23 Observabilidade              | Resolvida: OpenTelemetry (ADR-0009)                                                                                                                                            |
 | DP-25 Implantação                  | Pendente, fora desta feature (Vercel avaliada — research R-26)                                                                                                                 |
 | DP-26 CI e proteção                | Resolvida: GitHub Actions, branches `dev` e `main` protegidas (ADR-0008)                                                                                                       |
-| DP-27 Contrato com a SOFIA         | **Pendente** — contrato A2A é proposta v1 provisória; o canal A2A fica no fim das tarefas (research R-32)                                                                      |
+| DP-27 Contrato com a SOFIA         | **Resolvida na constitution 2.2.0**: contrato SOFIA v1.0 (research R-32, ADR-0011 proposto); o canal A2A continua no fim das tarefas                                          |
 
 
 **Resultado do gate (pré-design)**: **aprovado**. Não há violação sem justificativa: os antigos
 desvios D-01 (Semantic Kernel) e D-02 (MAF na Aplicação) deixaram de existir com a emenda 2.0.0; os
 desvios D-03, D-04, D-05 e D-06 e os ADR-0001 a ADR-0010 foram aprovados por Andressa Firmino em
 2026-11-04 (DP-20). As tarefas DEVEM marcar as dependências de D-05 (todas as que tratam de
-identificação, aprovação e exposição), do ADR-0004 (primeira chamada ao LLM com dados de documento)
-e da DP-27 (adaptador A2A, que pode mudar com o contrato definitivo).
+identificação, aprovação e exposição) e do ADR-0004 (primeira chamada ao LLM com dados de
+documento).
+
+**Revisão de 2026-11-05 (contrato SOFIA v1.0)**: a DP-27 foi resolvida na constitution 2.2.0. A
+revisão do D-04 e o novo D-07 estão registrados em Complexity Tracking e, com o ADR-0011, DEVEM ser
+aprovados por Andressa Firmino antes das tarefas da Fase 8. O gate das Fases 1 a 7 não muda.
 
 **Reavaliação pós-design**: o desenho da Fase 1 (data-model, quatro contratos e quickstart) não
 introduziu novas violações. Confirmações:
@@ -222,10 +236,11 @@ ferramenta da IA o acessa;
 - os checkpoints JSON não guardam XML nem texto de recomendação; o aprovador fica marcado como não
 verificado;
 - o Agent Card não expõe segredos e declara a ausência de autenticação;
-- o canal A2A e o REST usam o mesmo caso de uso.
+- o canal A2A e o REST usam o mesmo caso de uso;
+- o nome do usuário recebido da SOFIA fica fora de logs, do envio ao LLM e do contexto do usuário.
 
-O gate continua **aprovado**. A única decisão pendente que afeta a feature é a DP-27 (contrato
-definitivo com a SOFIA), que não bloqueia o núcleo.
+O gate continua **aprovado** para as Fases 1 a 7. A Fase 8 depende das aprovações da revisão de
+2026-11-05 (ADR-0011, D-04 revisado e D-07).
 
 ## Project Structure
 
@@ -244,7 +259,9 @@ specs/001-agente-auditoria-nfe/
 ├── quickstart.md                         # Fase 1: guia de execução e validação
 ├── contracts/
 │   ├── api-agente.openapi.yaml           # Canal direto (REST v1) e envelope v1
-│   ├── sofia-a2a.md                      # Contrato A2A — proposta v1 provisória (DP-27)
+│   ├── sofia-a2a.md                      # Contrato SOFIA v1.0 aplicado ao agente (DP-27, ADR-0011)
+│   ├── sofia-solicitacao-analise-v1.schema.json  # JSON Schema da SolicitacaoAnaliseSofia
+│   ├── sofia-resultado-analise-v1.schema.json    # JSON Schema do ResultadoAnaliseSofia
 │   ├── contrato-ia-v1.schema.json        # JSON Schema da saída estruturada do LLM
 │   ├── ferramentas-agente.md             # Contrato v1 das ferramentas do agente interno (constitution 4.6)
 │   └── consulta-manuais-mcp.md           # Contrato do lado consumidor para a Api.RAG (feature 002)
@@ -270,19 +287,20 @@ infra/
 ├── mongodb/init/01-colecoes.js  # Usuário da aplicação, coleções com $jsonSchema, índices, TTL
 └── postgres/init/01-consumo.sql # Usuário da aplicação e schema consumo (tabela por migração EF)
 .github/workflows/ci.yml         # build-test e build da imagem
-docs/adr/                        # ADR-0001 a ADR-0010 (DP-20)
+docs/adr/                        # ADR-0001 a ADR-0011 (DP-20)
 
 src/
 ├── Api.Agente/                          # Camada de Endpoints (host ASP.NET Core)
 │   ├── Program.cs                       # Composição: OpenAPI, health, A2A, limites, guarda do D-05
 │   ├── Endpoints/                       # Execuções, sessões, recomendações, contexto do usuário (REST v1)
-│   ├── A2A/                             # Registro do servidor A2A, Agent Card, leitura de metadados
-│   ├── Identificacao/                   # X-Usuario-Id / X-Chamador-Id e metadados A2A → IdentificacaoSolicitante
+│   ├── A2A/                             # Registro do servidor A2A, fábrica do Agent Card, ManipuladorSofiaA2A
+│   │   └── Sofia/                       # DTOs do contrato SOFIA v1.0, validador e mapeadores
+│   ├── Identificacao/                   # X-Usuario-Id / X-Chamador-Id e nome SOFIA → IdentificacaoSolicitante
 │   ├── Erros/                           # Mapeamento ERR-xxx → HTTP e envelope
 │   ├── appsettings.json                 # Sem segredos
 │   └── Dockerfile
 ├── AuditoriaNFe.Application/            # Camada de Aplicação
-│   ├── Agente/                          # AgenteAuditoriaNFe (AIAgent), fábrica do ChatClientAgent
+│   ├── Agente/                          # Fábrica do ChatClientAgent
 │   │   └── Instrucoes/                  # Instruções versionadas (recurso embutido)
 │   ├── Ferramentas/                     # Funções de leitura e cálculo (AIFunctionFactory) e política
 │   ├── ContextProviders/                # ContextoExecucao, ContextoSessao, ContextoUsuario
@@ -312,7 +330,7 @@ src/
 ├── AuditoriaNFe.Infrastructure/         # Camada de Infraestrutura
 │   ├── Ia/                              # IChatClient OpenAI, RegistroConsumoChatClient
 │   │   └── Simulacao/                   # IChatClient simulado (só Development e testes)
-│   ├── Persistencia/Mongo/              # Repositórios (sessões, execuções, contexto), AgentSessionStore
+│   ├── Persistencia/Mongo/              # Repositórios (sessões, execuções, contexto)
 │   ├── Persistencia/Postgres/           # DbContext de consumo, migrações, visão diária
 │   ├── Aprovacao/                       # Registro JSON do FR-035f, store de checkpoints do workflow
 │   ├── Xml/                             # Leitor seguro, resolvedor restrito, validador XSD, extrator
@@ -320,8 +338,8 @@ src/
 │   ├── Catalogos/                       # catalogo-regras.v1, catalogo-extracao.v1, precos-openai.v1
 │   ├── Mcp/                             # Consulta a manuais por MCP e implementação desabilitada
 │   └── Saude/                           # Health checks MongoDB, PostgreSQL, diretório, schemas
-└── Sofia.Simulator/                     # Console: descoberta do card, cliente A2A real, exibição
-    ├── Cenarios/                        # basico, continuidade, recomendacoes, sem-identificacao
+└── Sofia.Simulator/                     # Console: descoberta do card v0.3, cliente A2A v0.3 real, exibição
+    ├── Cenarios/                        # basico, documento-nao-suportado, contrato-invalido
     └── Exemplos/                        # XMLs sintéticos ou anonimizados (FR-050)
 
 tests/
@@ -330,7 +348,7 @@ tests/
     ├── Aplicacao/                       # Fluxo com IChatClient simulado, retentativas, ERR-013 a 016
     ├── Ferramentas/                     # Contrato, validação de argumentos, autorização
     ├── Aprovacao/                       # Workflow, checkpoints JSON, ERR-020 a ERR-022
-    ├── Contrato/                        # Agent Card, mensagens A2A, envelope, OpenAPI, contrato do LLM
+    ├── Contrato/                        # Agent Card, contrato SOFIA, mensagens A2A, envelope, OpenAPI, contrato do LLM
     ├── Integracao/                      # WebApplicationFactory + Testcontainers; A2A ponta a ponta
     ├── Arquitetura/                     # Dependências entre camadas; SemSegredos
     ├── Avaliacao/                       # Conjunto de 50+ perguntas (Categoria=Avaliacao)
@@ -342,7 +360,7 @@ tests/
 (`Api.Agente`, `AuditoriaNFe.Application`, `AuditoriaNFe.Domain`, `AuditoriaNFe.Infrastructure`,
 `Sofia.Simulator`, `AuditoriaNFe.Tests`), mapeados às camadas da constitution 3.3 (DP-19). A Api.RAG
 (REST, MCP Server, PgVector, ingestão) é da feature 002 e não tem projetos nesta feature. A SOFIA não
-tem projeto nesta solução: o `Sofia.Simulator` apenas valida o contrato A2A e não contém lógica de
+tem projeto nesta solução: o `Sofia.Simulator` apenas valida o contrato SOFIA v1.0 e não contém lógica de
 orquestração. Os "dados financeiros simulados" pedidos para a Infraestrutura correspondem ao
 `IChatClient` simulado e aos XMLs sintéticos; nenhum dado simulado é apresentado como real, e o
 provedor simulado é recusado fora de `Development`.
@@ -358,15 +376,14 @@ provedor simulado é recusado fora de `Development`.
 | ------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------- |
 | `IChatClient`       | Cliente OpenAI (Chat Completions) com `RegistroConsumoChatClient` e OpenTelemetry                                                                                | Infrastructure                  |
 | `ChatClientAgent`   | Agente interno da etapa 7, com instruções versionadas, ferramentas e saída `ContratoIaV1`; `Id` estável                                                          | Application                     |
-| `AIAgent`           | `AgenteAuditoriaNFe`, agente personalizado que recebe mensagens (A2A ou REST), executa o caso de uso e devolve texto + envelope (`DataContent` JSON) e metadados | Application                     |
-| `AgentSession`      | Histórico e estado dos providers do agente interno, na sessão de domínio; a sessão do hosting A2A guarda só o mapa chave → `sessaoId`                            | Application / Infrastructure    |
+| `AgentSession`      | Histórico e estado dos providers do agente interno, na sessão de domínio                                                                                         | Application / Infrastructure    |
 | `AIContextProvider` | `ContextoExecucaoProvider`, `ContextoSessaoProvider` e `ContextoUsuarioProvider` (só leitura), com `ProviderSessionState<T>`                                     | Application                     |
 | Middleware          | Execução (correlação, timeout, erros), Function Calling (autorização, validação, registro), `IChatClient` (consumo)                                              | Application / Infrastructure    |
 | Ferramentas         | `AIFunctionFactory.Create` com `[Description]`: listar documentos, obter campos, calcular total, listar achados                                                  | Application (cálculo no Domain) |
 | Workflow            | `FluxoAprovacaoRecomendacao` com `RequestPort` e `FileSystemJsonCheckpointStore`                                                                                 | Application / Infrastructure    |
-| A2A                 | `AddA2AServer` com `DisallowBackground`, `MapA2AHttpJson`, `MapA2AJsonRpc`, `AgentSessionStore` MongoDB; sem `AgentIsolationKeyProvider` na v1                   | Api.Agente                      |
-| Agent Card          | `MapWellKnownAgentCard` com habilidades, limites, versão e situação do contrato, ausência de autenticação                                                        | Api.Agente                      |
-| Cliente A2A         | `A2ACardResolver`, `GetAIAgentAsync` com HTTP+JSON                                                                                                               | Sofia.Simulator                 |
+| A2A (SDK A2A, D-07) | `A2AServer` com `ManipuladorSofiaA2A : IAgentHandler`, `TaskUpdater` e `InMemoryTaskStore`; `MapA2AWithV03Compat` em `/a2a/auditoria-nfe`                         | Api.Agente                      |
+| Agent Card          | `MapAgentCardGetWithV03Compat` (v0.3 por padrão) com a habilidade `analisar_documentos` e a extensão `urn:infis:sofia:contrato` (versão, `idAgente`, limites, ausência de autenticação) | Api.Agente      |
+| Cliente A2A         | `A2A.V0_3`: `A2ACardResolver` e `A2AClient.SendMessageAsync`                                                                                                     | Sofia.Simulator, Tests          |
 
 
 Uso detalhado das APIs: [research.md §3](./research.md#3-uso-documentado-das-apis-do-microsoft-agent-framework).
@@ -376,7 +393,7 @@ Uso detalhado das APIs: [research.md §3](./research.md#3-uso-documentado-das-ap
 
 | Etapa                          | Componente                                                                                                                                                                                                                                               | Falha                                                                       |
 | ------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------- |
-| 1. Receber e identificar       | Endpoint REST ou `AgenteAuditoriaNFe` (A2A) → `ExecutarSolicitacaoAuditoria`; ids pelo sistema; `IdentificacaoSolicitante` dos cabeçalhos ou metadados, com valores padrão (FR-052a, FR-052c); sessão conferida pela chave                               | ERR-005, ERR-006, ERR-007 interrompem                                       |
+| 1. Receber e identificar       | Endpoint REST ou `ManipuladorSofiaA2A` (A2A, depois da validação do contrato SOFIA) → `ExecutarSolicitacaoAuditoria`; ids pelo sistema; `IdentificacaoSolicitante` dos cabeçalhos, com valores padrão, ou do nome SOFIA (FR-052a, FR-052c, FR-052d); sessão conferida pela chave | ERR-005, ERR-006, ERR-007 interrompem                                       |
 | 2. Tamanho, formato, condições | Validação de limites e de conteúdo mínimo antes de ler os XMLs                                                                                                                                                                                           | ERR-001 a ERR-003, ERR-007 interrompem                                      |
 | 3. Tipo e versão               | Leitor XML seguro; identificação por raiz, namespace, versão e modelo em `ide/mod` e na chave (FR-007a); extração de `dhEmi` e `dhRecbto`; duplicidade (FR-009)                                                                                          | Por arquivo (ERR-008 a ERR-012)                                             |
 | 4. Layout (XSD)                | Data de referência → pacote vigente pelo manifesto → validação com o schema de `NFe` ou `nfeProc` do pacote; convivência quando prevista (FR-010 a FR-010f)                                                                                              | Por arquivo; ERR-023 sem pacote; conteúdo "não realizada — layout inválido" |
@@ -432,15 +449,29 @@ ERR-022/025 → 503, ERR-024 → 429 com `Retry-After`.
 | `GET /openapi/v1.json`, `/swagger`                                                         | Documentação (só `Development`)                                 | constitution 5.2 |
 
 
-O canal A2A está em [contracts/sofia-a2a.md](./contracts/sofia-a2a.md) (proposta v1 provisória).
+O canal A2A está em [contracts/sofia-a2a.md](./contracts/sofia-a2a.md) (contrato SOFIA v1.0).
+
+### Canal A2A (contrato SOFIA v1.0)
+
+- **Rotas**: `GET /.well-known/agent-card.json` e `POST /a2a/auditoria-nfe` (`message/send`), sem
+autenticação na v1 (D-05), com o mesmo limite de corpo, a mesma limitação de taxa e a mesma
+concorrência das rotas de análise do canal direto (ERR-024 → 429; corpo acima do limite → 413).
+- **Entrada**: uma parte de texto com a `SolicitacaoAnaliseSofia`; o validador do adaptador aplica
+o JSON Schema e as regras adicionais (FR-043a) antes do caso de uso. Os documentos viram arquivos
+recebidos com `idDocumento` (FR-043b).
+- **Identificação**: chamador `A2A:ChamadorPadrao` e usuário pelo hash do nome (FR-052d,
+data-model §0).
+- **Saída**: Task `completed` com o Artifact `analise-sofia-v1` (FR-043d); status, achados e
+observações pelo mapeador do data-model §18. Sem IDs válidos, Task `failed` com ERR-007.
+- **Estados**: a Task volta no estado final (D-04 revisado).
 
 ### Contexto do usuário (FR-055 a FR-060)
 
 - **Coleção** `contextos_usuario`, um documento por chave de isolamento, com `$jsonSchema` que só
 aceita os itens do FR-055a e índice TTL em `expiraEm` (90 dias sem atividade, configurável).
 - **Gravação** pelo caso de uso na etapa 9 (CNPJs dos documentos aprovados no layout, achados
-determinísticos recorrentes) e por declaração explícita (endpoint de preferências ou metadado
-`preferencias` do A2A). Idempotente por execução. A IA não grava nada (FR-057).
+determinísticos recorrentes) e por declaração explícita (endpoint de preferências do canal direto).
+Idempotente por execução. A IA não grava nada (FR-057).
 - **Leitura** pelo `ContextoUsuarioProvider`, como dado delimitado e não confiável, limitado por
 `ContextoUsuario:MaxItensNoPrompt`; nunca como evidência (FR-058).
 - **Usuário "anonimo"**: sem leitura nem gravação; o parecer informa "usuário não identificado".
@@ -498,6 +529,7 @@ antes do merge.
 | `Sensibilidade:TermosTributos`                                                    | lista revisada pelo responsável fiscal                  | FR-035a                        |
 | `Mcp:Habilitado` / `Mcp:Endpoint` / `Mcp:Timeout` / `Mcp:QuantidadeMaximaTrechos` | `false` / vazio / 10 s* / 5                             | FR-047a, contrato MCP          |
 | `Aprovacao:Diretorio`                                                             | `./data/aprovacoes`                                     | FR-035j                        |
+| `A2A:UrlPublica` / `A2A:IdAgente` / `A2A:ChamadorPadrao`                          | `http://localhost:5310` / `agente-auditoria-nfe` / `sofia` | contrato SOFIA, FR-044a, FR-052d |
 | `Seguranca:AutenticacaoHabilitada`                                                | `false` (único valor aceito na v1, só em `Development`) | D-05                           |
 | `Persistencia:AplicarMigracoes`                                                   | `true` só no ambiente local                             | research R-16                  |
 | `OpenAI:Modelo`                                                                   | sem padrão                                              | DP-05                          |
@@ -514,8 +546,8 @@ autenticação; dados sintéticos. Limitação de taxa por chave de isolamento.
 - XML: `DtdProcessing.Prohibit`, `XmlResolver = null`, limites de caracteres e profundidade; tipo
 pelo conteúdo; schemas carregados só da pasta do pacote, com SHA-256 conferido.
 - Limites e rate limit antes de processamento custoso; corpo HTTP limitado.
-- Logs sem XML, pergunta, resposta, contexto do usuário, `usuarioId` em claro ou dados pessoais;
-telemetria do MAF sem dados sensíveis.
+- Logs sem XML, pergunta, resposta, contexto do usuário, `usuarioId` em claro, nome do usuário
+recebido da SOFIA ou dados pessoais; telemetria do MAF e do SDK A2A sem dados sensíveis.
 - Envio ao LLM conforme ADR-0004 (minimização e mascaramento).
 - Contexto do usuário sem CPF, nomes, endereços, valores ou texto livre, garantido pelo
 `$jsonSchema` da coleção e pelo caso de uso.
@@ -532,8 +564,8 @@ telemetria do MAF sem dados sensíveis.
 | Aplicação (IChatClient simulado) | TS-015 a TS-020, TS-026 a TS-028, TS-036 a TS-038, TS-047, TS-055, TS-059                                                                                                                                                                                                                                              |
 | Ferramentas                      | Contrato, argumentos inválidos, autorização e timeout de cada ferramenta                                                                                                                                                                                                                                               |
 | Aprovação                        | TS-040, TS-041, TS-043 a TS-045                                                                                                                                                                                                                                                                                        |
-| Contrato                         | TS-029, TS-032, TS-034, envelope v1, OpenAPI de referência, schema do contrato do LLM                                                                                                                                                                                                                                  |
-| Integração (Testcontainers)      | TS-002, TS-003, TS-006 a TS-012, TS-021 a TS-025, TS-030, TS-033 (limitado por D-04), TS-035, TS-035a, TS-054, TS-056, TS-058, TS-063, TS-064; rastreabilidade a partir do `execucaoId` (NFR-008, P16)                                                                                                                  |
+| Contrato                         | TS-029, TS-032, TS-034, TS-066, JSON Schemas do contrato SOFIA (exemplos válidos e inválidos), mapeadores de solicitação e resultado, envelope v1, OpenAPI de referência, schema do contrato do LLM                                                                                                                    |
+| Integração (Testcontainers)      | TS-002, TS-003, TS-006 a TS-012, TS-021 a TS-025, TS-030, TS-033 (limitado por D-04), TS-035, TS-035a, TS-054, TS-056, TS-058, TS-063 a TS-065, TS-067; rastreabilidade a partir do `execucaoId` (NFR-008, P16)                                                                                                         |
 | Arquitetura                      | Domínio sem pacotes externos; Aplicação sem OpenAI, MCP, A2A, MongoDB ou Npgsql; `SemSegredos`                                                                                                                                                                                                                         |
 | Avaliação                        | Com OpenAI real, sob demanda (P17). Perguntas e recomendações: SC-003, SC-004, SC-008. Análise por IA (lotes sintéticos com divergências conhecidas por grupo de regra): 0 indícios sem evidência verificável, 0 indícios que contradizem ou repetem como novo um achado determinístico e 0 valores não rastreáveis no resumo |
 | Adiados pelo D-05                | TS-031, TS-042                                                                                                                                                                                                                                                                                                         |
@@ -551,13 +583,15 @@ telemetria do MAF sem dados sensíveis.
   4. parecer e envelope.
 3. Memória conversacional, contexto do usuário e controle de tokens e custos.
 4. IA (etapas 7 e 8), ferramentas, recomendações e aprovação humana.
-5. Canal A2A e `Sofia.Simulator`, contra a proposta v1 do contrato (DP-27).
+5. Canal A2A e `Sofia.Simulator`, contra o contrato SOFIA v1.0 (DP-27), começando pelo spike do
+SDK A2A com a camada v0.3 (research R-11).
 
 
 
 ### ADRs
 
-Registrados em `docs/adr/` e aprovados por Andressa Firmino em 2026-11-04 (DP-20).
+Registrados em `docs/adr/`. ADR-0001 a ADR-0010 aprovados por Andressa Firmino em 2026-11-04
+(DP-20); ADR-0011 proposto em 2026-11-05.
 
 
 | ADR      | Tema                                                                                           | Situação |
@@ -568,10 +602,11 @@ Registrados em `docs/adr/` e aprovados por Andressa Firmino em 2026-11-04 (DP-20
 | ADR-0004 | Minimização de dados ao LLM (DP-14)                                                            | Aprovado |
 | ADR-0005 | Retenção de sessões, contexto do usuário, consumo e checkpoints (DP-13)                        | Aprovado |
 | ADR-0006 | Topologia PostgreSQL (DP-16)                                                                   | Aprovado |
-| ADR-0007 | Protocolo A2A 1.0, Agent Card, contrato provisório e limitação de tarefas (DP-17, DP-27, D-04) | Aprovado |
+| ADR-0007 | Protocolo A2A 1.0, Agent Card, contrato provisório e limitação de tarefas (DP-17, DP-27, D-04) | Aprovado (será substituído pelo ADR-0011) |
 | ADR-0008 | CI, branches `dev` e `main` protegidas, com autoaprovação de PR (DP-26, D-06)                  | Aprovado |
 | ADR-0009 | Observabilidade com OpenTelemetry (DP-23)                                                      | Aprovado |
 | ADR-0010 | Schemas XSD oficiais versionados no repositório e seleção pela data de referência (DP-03)      | Aprovado |
+| ADR-0011 | Contrato SOFIA v1.0 sobre A2A v0.3 (DP-27, DP-17, D-04 revisado, D-07); substitui o ADR-0007 quando aprovado | Proposto |
 
 
 Os antigos ADR-0001 (MAF no lugar do Semantic Kernel) e ADR-0002 (MAF na Aplicação) deixaram de ser
@@ -585,12 +620,14 @@ que siga a política de minimização e mascaramento do ADR.
 passar por outro usuário e aprovar recomendações sensíveis. Execução só local até o fim do desvio.
 - **Checkpoints JSON locais**: apenas demonstração; uma instância; sem transação nem criptografia;
 exigem volume persistente no contêiner (FR-035j).
-- **A2A em pré-lançamento**: pacotes A2A e de hosting em preview; versões fixadas e testes de
-contrato obrigatórios a cada atualização.
-- **Contrato com a SOFIA provisório (DP-27)**: mudanças acordadas exigem nova versão do contrato e do
-adaptador A2A.
-- **Sem tarefas A2A em segundo plano**: o hosting do MAF na versão fixada só devolve mensagens
-imediatas; estados intermediários não são observáveis por A2A (D-04).
+- **A2A em pré-lançamento**: SDK A2A e camada `A2A.V0_3Compat` em preview; versões fixadas e testes
+de contrato obrigatórios a cada atualização.
+- **Contrato SOFIA v1.0**: cobre só a análise com pergunta; continuidade, perguntas sem documentos e
+consulta de recomendações ficam no canal direto. Mudanças incompatíveis exigem nova versão maior.
+- **Task devolvida no estado final**: estados intermediários não são observáveis por A2A (D-04);
+Tasks só em memória, para uma instância.
+- **Identificação pelo nome (D-05)**: homônimos compartilham o contexto do usuário até a
+autenticação.
 - **Tabela de vigência sujeita a ajustes**: aprovada com a ressalva de ajustes futuros; datas
 inferidas e pendências P1 a P5 registradas na tabela.
 - **Vercel**: o runtime de contêiner da Vercel (beta) executa Functions sem disco durável; não é
@@ -605,14 +642,16 @@ até a feature 002.
 > Desvios da constitution e da spec, registrados conforme a seção 8.3. Responsável pela proposta:
 > arquiteto do projeto. **Aprovado por Andressa Firmino, 2026-11-04** (D-03, D-04, D-05 e D-06,
 > conforme DP-20). Os desvios D-01 e D-02 da versão anterior deste plano foram encerrados pela
-> constitution 2.0.0.
+> constitution 2.0.0. **Revisão de 2026-11-05**: a nova redação do D-04 e o D-07 estão pendentes de
+> aprovação; enquanto isso, vale a aprovação original do D-04 apenas para o desenho anterior.
 
 
 | Violation                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           | Why Needed                                                                                                                                     | Simpler Alternative Rejected Because                                                                                                                                                                                                              |
 | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **D-03** — Workflow do MAF e registro JSON próprio para a aprovação (P12, complexidade). Impacto: dois arquivos por recomendação sensível. **Aprovado por Andressa Firmino, 2026-11-04**                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 | Pedido de Workflow com aprovação humana e checkpoints; o formato interno de checkpoint do MAF não é contrato estável para os campos do FR-035f | Só uma máquina de estados com arquivo JSON não atende ao pedido de Workflow; só o checkpoint do MAF não garante schema estável de auditoria                                                                                                       |
-| **D-04** — Spec FR-046 e TS-033: estados de tarefa intermediários não disponíveis por A2A na v1. Impacto: a SOFIA só vê o estado final. Prazo: reavaliar a cada versão do hosting A2A. **Aprovado por Andressa Firmino, 2026-11-04**                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     | O hosting A2A do MAF ainda não suporta respostas em segundo plano (`DisallowBackground`); o FR-043 exige o SDK oficial                         | Implementar tarefas A2A manualmente contraria o FR-043; o lote máximo cabe no tempo síncrono (NFR-001). A spec DEVE ser ajustada por `/speckit-clarify` ou o desvio aprovado                                                                      |
+| **D-04 (revisado em 2026-11-05)** — Spec FR-046 e TS-033: a Task A2A é devolvida na resposta do `message/send` já no estado final (`completed` ou `failed`); os estados intermediários emitidos pelo `TaskUpdater` não são observáveis pela SOFIA. Impacto: a SOFIA espera a análise inteira na mesma requisição (até 120 s, com tempo limite ≥ 150 s do lado dela). Prazo: reavaliar quando a SOFIA suportar `message/stream` ou consulta de Task. Redação original **aprovada por Andressa Firmino, 2026-11-04**; revisão **pendente de aprovação** | O contrato SOFIA v1.0 usa `message/send` e espera o resultado na resposta; Tasks só em memória não sobrevivem a reinício                      | Streaming ou `tasks/get` não fazem parte do contrato SOFIA v1.0; o lote máximo cabe no tempo síncrono (NFR-001)                                                                                                                                  |
 | **D-05** — Constitution 5.2 (autenticação do chamador), P18 (autenticação igual nos canais) e Definition of Done ("nenhum endpoint não público sem credencial"); spec FR-052, FR-035h, ERR-004, ERR-019, TS-031 e TS-042 adiados. **Impacto**: identificação do usuário e do chamador informada sem verificação; isolamento de sessões e do contexto do usuário depende da boa-fé do chamador; aprovador não verificado. **Riscos**: personificação de usuário, leitura do contexto de outro usuário por quem souber o identificador, aprovação indevida de recomendações sensíveis. **Mitigação**: execução só em `Development` (guarda de inicialização), portas em `127.0.0.1`, dados sintéticos ou anonimizados, card declarando ausência de autenticação, aprovador marcado como não verificado. **Responsável**: solicitante da feature. **Aprovação**: Aprovado por Andressa Firmino, 2026-11-04. **Prazo de revisão**: encerrar antes de qualquer implantação fora da máquina local ou da integração com a SOFIA real; reavaliar no planejamento da feature 002 | A versão 1 serve para testar a validação dos XMLs; o solicitante decidiu adiar a autenticação para implementação futura                        | Implementar a credencial de serviço já na v1 exigiria decidir a DP-10 (mecanismo, rotação, multi-tenant) antes de validar o núcleo; JWT de desenvolvimento sem ADR seria uma autenticação provisória com a mesma ausência de garantia em produção |
 | **D-06** — Constitution 5.3 ("todo PR DEVE passar por revisão de ao menos uma pessoa diferente do autor") e Definition of Done ("revisão aprovada por pessoa diferente do autor"). **Impacto**: PRs revisados e aprovados pela própria autora; proteção da `main` e da `dev` com zero aprovações obrigatórias, porque o GitHub não permite que o autor aprove o próprio PR. **Riscos**: erros e desvios da constitution sem segundo olhar. **Mitigação**: PR obrigatório, check `build-test` obrigatório, sem push direto nem force push, checklist de conformidade com a constitution na descrição do PR, preenchido e comentado como "Aprovado" antes do merge. **Responsável**: Andressa Firmino. **Aprovação**: Aprovado por Andressa Firmino, 2026-11-04. **Prazo de revisão**: encerrar quando outra pessoa entrar como mantenedora (junto com a reabertura da DP-20) | O projeto tem uma única mantenedora (DP-20) | Exigir uma aprovação na proteção da `main` e da `dev` impediria qualquer merge, pois o GitHub bloqueia a autoaprovação; contornar com bypass de administrador anularia a proteção para todos os PRs |
+| **D-07** (registrado em 2026-11-05) — Constitution 3.1 ("o agente DEVE ser construído com o Microsoft Agent Framework, incluindo [...] a hospedagem A2A"). **Impacto**: o canal A2A usa o `A2AServer` do SDK oficial A2A com o manipulador `ManipuladorSofiaA2A` e a camada `A2A.V0_3Compat`, em vez do `AddA2AServer` do MAF; o agente interno, as ferramentas, os context providers, o middleware e o workflow continuam no MAF. **Riscos**: menos integração com a telemetria e as atualizações do hosting do MAF. **Mitigação**: a camada A2A fica isolada no `Api.Agente/A2A`; testes de contrato do card, da Message e da Task; o spike da Fase 8 verifica se o `AddA2AServer` do MAF aceita o `IAgentHandler` próprio e pode ser mapeado com `MapA2AWithV03Compat`, e nesse caso o desvio é encerrado. **Responsável**: arquiteto do projeto. **Aprovação**: pendente (Andressa Firmino). **Prazo de revisão**: no spike da Fase 8 e a cada nova versão do hosting A2A do MAF | O contrato SOFIA v1.0 exige Task com Artifact no perfil v0.3; o hosting A2A do MAF na versão fixada (`DisallowBackground`) só devolve Message | Manter o hosting do MAF não atende o contrato; implementar JSON-RPC à mão contraria o FR-043; trocar o MAF por outro framework de agentes não resolve a hospedagem A2A e exigiria ADR pela seção 3.1 |
 
 

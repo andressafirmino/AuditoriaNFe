@@ -1,102 +1,88 @@
 # Contrato A2A: SOFIA ↔ AgenteAuditoriaNFe
 
-**Situação**: **proposta v1 provisória** — o contrato definitivo com a SOFIA depende da DP-27
-(constitution 2.1.0) | **Versão do contrato**: 1.0 | **Protocolo**: A2A 1.0 (SDK oficial `A2A`
-1.0.0-preview3, hosting MAF 1.26.0-preview.261023.1) | **Feature**: `001-agente-auditoria-nfe` |
-**Data**: 2026-10-29, revisado em 2026-11-04
+**Situação**: **contrato SOFIA v1.0** (padrão da turma INFIS para agentes especializados), resolve a
+DP-27 (constitution 2.2.0) | **Versão do contrato**: `1.0` | **Perfil de protocolo**: A2A v0.3.x,
+JSON-RPC 2.0 (`message/send`) | **SDK**: `A2A` 1.0.0-preview3 com a camada oficial
+`A2A.V0_3Compat` 1.0.0-preview3 (research R-11) | **Decisão**: ADR-0011 | **Feature**:
+`001-agente-auditoria-nfe` | **Data**: 2026-11-05
 
-A SOFIA é um orquestrador externo, não implementado neste projeto, e ainda não chama agentes
-externos. Este documento é a proposta do agente para a interface entre os dois; até o acordo com o
-responsável pela SOFIA (DP-27), ele é validado apenas pelo Sofia.Simulator. Mudanças acordadas
-afetam o adaptador A2A e o Agent Card, e não o caso de uso de análise, que é o mesmo do canal direto
-([api-agente.openapi.yaml](./api-agente.openapi.yaml)).
+Este documento substitui a proposta v1 provisória de 2026-11-04. A SOFIA envia uma
+`SolicitacaoAnaliseSofia` serializada em JSON dentro de uma Message A2A; o agente devolve uma Task
+A2A concluída com um Artifact que contém um `ResultadoAnaliseSofia`. Não há API REST de análise
+disfarçada de A2A: o canal direto ([api-agente.openapi.yaml](./api-agente.openapi.yaml)) continua
+existindo para os demais clientes e usa o mesmo caso de uso.
 
-Este contrato complementa a [spec](../spec.md) (FR-043 a FR-047, FR-035g, FR-048 a FR-052c) e o
-[modelo de dados](../data-model.md). Os exemplos JSON seguem a representação HTTP+JSON do A2A 1.0;
-os nomes exatos das propriedades são os do SDK fixado e são verificados pelos testes de contrato
-(TS-029, TS-032, TS-034, TS-035).
+A versão do contrato de negócio (`versaoContrato = "1.0"`) é independente da versão do protocolo
+A2A (perfil v0.3.x). Os JSON Schemas do contrato estão em
+[sofia-solicitacao-analise-v1.schema.json](./sofia-solicitacao-analise-v1.schema.json) e
+[sofia-resultado-analise-v1.schema.json](./sofia-resultado-analise-v1.schema.json).
+
+Este contrato complementa a [spec](../spec.md) (FR-043 a FR-047, FR-035g, FR-048 a FR-052d) e o
+[modelo de dados](../data-model.md) (§0, §2, §3 e §18).
 
 > **Sem autenticação na v1 (desvio D-05).** O agente só pode ser executado em ambiente local de
 > testes, com as portas publicadas em `127.0.0.1` e dados sintéticos ou anonimizados (FR-052b). A
-> integração com a SOFIA real exige o fim do D-05.
+> autenticação é de transporte (fora dos DTOs) e chega com o ADR da DP-10; a integração com a SOFIA
+> real exige o fim do D-05.
 
 ## 1. Endereços
 
 | Recurso | Método e caminho | Autenticação |
 | ------- | ---------------- | ------------ |
 | Agent Card | `GET /.well-known/agent-card.json` | Pública (sem segredos nem dados de usuário — FR-045) |
-| Envio de mensagem (HTTP+JSON, preferencial) | `POST /a2a/auditoria-nfe/message:send` | Nenhuma na v1 (D-05) |
-| Envio com streaming (HTTP+JSON) | `POST /a2a/auditoria-nfe/message:stream` | Nenhuma na v1 (não contratual na v1, ver 7) |
-| JSON-RPC 2.0 (alternativo) | `POST /a2a/auditoria-nfe` com método `SendMessage` | Nenhuma na v1 (D-05) |
+| Endpoint A2A (JSON-RPC 2.0) | `POST /a2a/auditoria-nfe`, método `message/send` | Nenhuma na v1 (D-05) |
 
-A URL base é configurável (`A2A:UrlPublica`; no ambiente local, `http://localhost:5310`) e é a que
-aparece em `supportedInterfaces` do card.
+- A URL base é configurável (`A2A:UrlPublica`; no ambiente local, `http://localhost:5310`). O campo
+  `url` do card é `{A2A:UrlPublica}/a2a/auditoria-nfe`.
+- O card é servido no formato v0.3 estrito quando o cliente não envia o cabeçalho `A2A-Version` ou
+  envia `A2A-Version: 0.3`; com `A2A-Version: 1.0`, o mesmo card sai no formato A2A 1.0
+  (`MapAgentCardGetWithV03Compat` com `blendedCard = false`).
+- O endpoint aceita requisições v0.3 e v1.0 (`MapA2AWithV03Compat`); só o perfil v0.3
+  (`message/send`) é contratual. Streaming (`message/stream`), `tasks/resubscribe` e notificações
+  push não são oferecidos (`capabilities.streaming = false`, `pushNotifications = false`).
 
 ## 2. Agent Card
 
-Gerado a partir da configuração na inicialização. Exemplo (valores de limites são os iniciais da
-spec):
+Gerado a partir da configuração na inicialização. Exemplo no formato v0.3 (os nomes exatos são os
+produzidos pelo `V03TypeConverter` do SDK e são conferidos pelo teste de contrato):
 
 ```json
 {
   "name": "AgenteAuditoriaNFe",
-  "description": "Analisa lotes de XML de NF-e (modelo 55, layout 4.00): valida a estrutura contra o schema oficial vigente na data de cada documento e confere os totalizadores do catálogo aprovado, emite parecer estruturado e responde perguntas sobre a base analisada sem inventar valores. Versão sem autenticação, somente para ambiente local de testes.",
+  "description": "Analisa XMLs de NF-e (modelo 55, layout 4.00) enviados pela SOFIA: valida a estrutura contra o schema oficial vigente na data de cada documento e confere os totalizadores do catálogo aprovado, sem inventar valores. Versão sem autenticação, somente para ambiente local de testes.",
+  "url": "http://localhost:5310/a2a/auditoria-nfe",
   "version": "1.0.0",
-  "supportedInterfaces": [
-    { "url": "http://localhost:5310/a2a/auditoria-nfe", "protocolBinding": "HTTP+JSON", "protocolVersion": "1.0" },
-    { "url": "http://localhost:5310/a2a/auditoria-nfe", "protocolBinding": "JSONRPC", "protocolVersion": "1.0" }
-  ],
+  "protocolVersion": "0.3.0",
+  "preferredTransport": "JSONRPC",
   "capabilities": {
     "streaming": false,
     "pushNotifications": false,
     "extensions": [
       {
-        "uri": "urn:agente-auditoria-nfe:contrato",
-        "description": "Contrato de solicitação e envelope de resposta do AgenteAuditoriaNFe (proposta v1 provisória).",
-        "required": true,
+        "uri": "urn:infis:sofia:contrato",
+        "description": "Contrato SOFIA v1.0: SolicitacaoAnaliseSofia em TextPart; ResultadoAnaliseSofia em Artifact de Task concluída.",
+        "required": false,
         "params": {
           "versaoContrato": "1.0",
-          "situacaoContrato": "provisorio",
-          "versaoEnvelope": "1.0",
+          "idAgente": "agente-auditoria-nfe",
+          "nomeArtifact": "analise-sofia-v1",
           "autenticacao": "nenhuma — somente ambiente local de testes",
-          "limites": { "tamanhoTotalBytes": 5242880, "quantidadeArquivos": 20 },
-          "formatosArquivo": ["application/xml", "text/xml"],
-          "documentosSuportados": [{ "tipo": "NF-e", "modelo": "55", "versoesLayout": ["4.00"] }],
-          "validacoes": ["schema oficial vigente na data de referência", "totalizadores do catálogo de regras v1"],
+          "limites": { "tamanhoTotalBytes": 5242880, "quantidadeDocumentos": 20 },
+          "documentosSuportados": [{ "tipo": "NF-e", "modelo": "55", "versoesLayout": ["4.00"], "tipoMime": "application/xml" }],
           "idioma": "pt-BR"
         }
       }
     ]
   },
-  "defaultInputModes": ["text/plain", "application/xml"],
-  "defaultOutputModes": ["text/plain", "application/json"],
+  "defaultInputModes": ["text"],
+  "defaultOutputModes": ["text"],
   "skills": [
     {
-      "id": "analisar-lote-nfe",
-      "name": "Analisar lote de NF-e",
-      "description": "Recebe um ou mais XMLs de NF-e modelo 55, com ou sem pergunta, valida estrutura e totalizadores e devolve o parecer.",
-      "tags": ["nfe", "auditoria", "xml", "parecer"],
-      "examples": ["Analise estes XMLs e informe as inconsistências."],
-      "inputModes": ["text/plain", "application/xml"],
-      "outputModes": ["text/plain", "application/json"]
-    },
-    {
-      "id": "perguntar-base-analisada",
-      "name": "Perguntar sobre a base analisada",
-      "description": "Responde perguntas sobre os documentos já analisados na sessão, somente com valores rastreáveis.",
-      "tags": ["nfe", "perguntas", "sessao"],
-      "examples": ["Qual o valor total das notas analisadas?"],
-      "inputModes": ["text/plain"],
-      "outputModes": ["text/plain", "application/json"]
-    },
-    {
-      "id": "consultar-recomendacoes",
-      "name": "Consultar recomendações demonstrativas",
-      "description": "Devolve o estado das recomendações de uma execução ou sessão e o conteúdo das liberadas ou aprovadas.",
-      "tags": ["recomendacoes", "aprovacao"],
-      "examples": ["Consultar recomendações da execução informada."],
-      "inputModes": ["text/plain"],
-      "outputModes": ["application/json"]
+      "id": "analisar_documentos",
+      "name": "Auditoria de XMLs de NF-e",
+      "description": "Recebe da SOFIA os textos de XMLs de NF-e modelo 55 com uma pergunta, valida estrutura e totalizadores e devolve achados com evidências rastreáveis.",
+      "tags": ["infis", "fiscal", "sofia", "nfe", "auditoria"],
+      "examples": ["Verifique divergências fiscais nos documentos."]
     }
   ]
 }
@@ -104,268 +90,300 @@ spec):
 
 Regras:
 
-- O card publica nome, descrição, versão do agente (`version`), versão e situação do contrato
-  (extensão), habilidades, formatos, limites e a ausência de autenticação (FR-044, FR-052b).
-- O card não declara `securitySchemes` nem `securityRequirements` na v1. Com o fim do D-05, o
-  esquema da credencial de serviço (ADR da DP-10) entra no card em nova versão menor do contrato.
+- O card publica nome, descrição, versão do agente (`version`), versão do contrato e `idAgente`
+  (extensão), a habilidade, os formatos, os limites e a ausência de autenticação (FR-044, FR-052b).
+- `idAgente` vem de `A2A:IdAgente` (inicial `agente-auditoria-nfe`) e DEVE ser igual ao cadastrado
+  no registry da SOFIA e ao devolvido em `ResultadoAnaliseSofia.agente.idAgente`.
+- O id da habilidade é `analisar_documentos`, o mesmo do padrão da turma.
+- O card não declara `securitySchemes` na v1. Com o fim do D-05, o esquema da credencial de serviço
+  (ADR da DP-10) entra no card em nova versão menor do contrato.
 - Mudança de limite por configuração altera o card sem nova versão do contrato (FR-005).
 - O card não contém segredos, chaves, endereços internos nem dados de usuários (FR-045).
-- A estrutura de `extensions` segue o SDK A2A fixado; se o SDK usar nomes diferentes, prevalece o
-  SDK, e este documento é atualizado no mesmo PR.
 
-## 3. Identificação do usuário e do chamador (D-05)
+## 3. Solicitação (SOFIA → agente)
 
-- O chamador informa, nos metadados da solicitação, o identificador do usuário final (`usuarioId`)
-  e a sua própria identificação (`chamadorId`). Os dois são registrados e usados no isolamento de
-  sessões e do contexto do usuário, **sem verificação** (FR-052a).
-- Sem `usuarioId`, vale `"anonimo"`; sem `chamadorId`, vale `"nao-informado"`. O usuário
-  `"anonimo"` não tem contexto do usuário lido nem gravado, e o parecer indica que o usuário não foi
-  identificado (FR-052c).
-- Uma sessão só é acessível pelo mesmo `usuarioId` informado pelo mesmo `chamadorId` (FR-039).
-- Não há papel de aprovador na v1; aprovar ou rejeitar só pelo canal direto (FR-035d).
-- Obrigação da SOFIA (quando a integração for acordada): informar `usuarioId` e `chamadorId` em toda
-  solicitação. Com o fim do D-05, `chamadorId` passa a ser o da credencial de serviço autenticada.
-
-## 4. Solicitação
-
-### 4.1 Estrutura
+### 3.1 Envelope A2A
 
 ```json
 {
-  "message": {
-    "messageId": "0193f0c2-5b1e-7c3a-9d2f-1a2b3c4d5e6f",
-    "contextId": "opcional — omitido na primeira solicitação",
-    "role": "ROLE_USER",
-    "parts": [
-      { "text": "Quais notas têm totalizador divergente?" },
-      { "raw": "<conteúdo do XML em base64>", "mediaType": "application/xml", "filename": "nfe-0001.xml" },
-      { "raw": "<conteúdo do XML em base64>", "mediaType": "application/xml", "filename": "nfe-0002.xml" }
-    ]
-  },
-  "metadata": {
-    "usuarioId": "usuario-demo-01",
-    "chamadorId": "sofia-simulador",
-    "correlacaoId": "sofia-2026-11-04-000123",
-    "operacao": "analisar",
-    "sessaoId": "opcional — continuidade explícita"
-  }
-}
-```
-
-### 4.2 Partes da mensagem
-
-| Parte | Cardinalidade | Regras |
-| ----- | ------------- | ------ |
-| Texto (`text`) | 0..1 | Pergunta em linguagem natural; tratada como dado, nunca como instrução ao sistema (FR-053) |
-| Arquivo (`raw` + `mediaType` + `filename`) | 0..N | `mediaType` `application/xml` ou `text/xml`; o tipo real é verificado pelo conteúdo (FR-006); `filename` obrigatório |
-| Arquivo por URL (`url`) | 0 | Não aceito (o agente não busca recursos remotos); gera ERR-007 |
-| Dados (`data`) | 0 | Não aceito na v1; gera ERR-007 |
-
-Ao menos uma parte de texto ou de arquivo é obrigatória (senão ERR-001). Os limites de tamanho total
-(soma dos bytes decodificados) e de quantidade são validados antes de qualquer análise (ERR-002,
-ERR-003, NFR-002).
-
-### 4.3 Metadados
-
-Os metadados da solicitação são entregues pelo hosting do MAF ao agente em
-`AgentRunOptions.AdditionalProperties`. O teste de contrato confirma o nível (solicitação ou
-mensagem) no SDK fixado; o agente lê os dois, com prioridade para o da solicitação.
-
-| Chave | Obrigatória | Regras |
-| ----- | ----------- | ------ |
-| `usuarioId` | Não | Até 128 caracteres `[A-Za-z0-9._:@-]`; ausente → `"anonimo"`; inválido → ERR-007 |
-| `chamadorId` | Não | Mesmo formato; ausente → `"nao-informado"`; inválido → ERR-007 |
-| `correlacaoId` | Não | Até 128 caracteres `[A-Za-z0-9._:-]`; devolvido sem alteração (FR-047); inválido gera ERR-007 |
-| `operacao` | Não | `analisar`, `perguntar` ou `consultar-recomendacoes`. Se omitida: com arquivos → `analisar`; só texto → `perguntar` |
-| `sessaoId` | Não | Continuidade explícita; se não pertencer ao mesmo usuário e chamador → ERR-005; expirada → ERR-006 |
-| `execucaoId` | Em `consultar-recomendacoes` | Execução cujas recomendações serão consultadas (ou use `sessaoId`) |
-| `preferencias` | Não | `{ "nivelDetalhe": "Resumido" \| "Detalhado", "tributosInteresse": [...] }`; declaração explícita gravada no contexto do usuário (FR-055a, FR-055b); ignorada para `"anonimo"`; valor fora da lista → ERR-007 |
-
-### 4.4 Sessão e `contextId`
-
-- A sessão A2A segue o `contextId`. Na primeira solicitação, a SOFIA omite o `contextId`; a resposta
-  traz o `contextId` e o `sessaoId` (FR-036).
-- Para continuar, a SOFIA reenvia o mesmo `contextId` e, recomendado, o `sessaoId` em metadados.
-- O `contextId` não é credencial: a sessão de domínio é conferida pelo `usuarioId` e pelo
-  `chamadorId`. Um `contextId` desconhecido para essa identificação, sem `sessaoId`, inicia nova
-  sessão, sem revelar se o identificador existe para outro usuário (FR-039).
-
-## 5. Resposta
-
-### 5.1 Estrutura
-
-Na v1, toda resposta é uma mensagem imediata do agente (sem tarefa A2A — ver 7).
-
-```json
-{
-  "message": {
-    "messageId": "0193f0c3-0000-7000-8000-000000000001",
-    "contextId": "ctx-gerado-ou-recebido",
-    "role": "ROLE_AGENT",
-    "parts": [
-      { "text": "Foram recebidos 2 arquivos e analisados 2. Resultado geral: Com inconsistências. ..." },
-      { "raw": "<envelope JSON em base64>", "mediaType": "application/json", "filename": "envelope-auditoria-nfe.v1.json" }
-    ],
-    "metadata": {
-      "execucaoId": "0193f0c2-6a00-7b00-8c00-0000000000aa",
-      "sessaoId": "0193f0c2-6a00-7b00-8c00-0000000000bb",
-      "correlacaoId": "sofia-2026-11-04-000123",
-      "estado": "Concluida",
-      "versaoContrato": "1.0",
-      "versaoEnvelope": "1.0",
-      "dataHora": "2026-11-04T14:03:12Z"
+  "jsonrpc": "2.0",
+  "id": "rpc-001",
+  "method": "message/send",
+  "params": {
+    "message": {
+      "kind": "message",
+      "role": "user",
+      "messageId": "5f92c2ba-6870-4862-87ba-1ae8669a77f4",
+      "parts": [
+        {
+          "kind": "text",
+          "text": "{\"versaoContrato\":\"1.0\",\"idExecucao\":\"8b2f0ad6-c2e4-4a68-8bdd-20f785bc798e\",\"idSolicitacao\":\"e1b3a4cb-d729-4bd4-b796-b9c94be07b46\",\"usuario\":{\"nome\":\"Maria Oliveira\"},\"pergunta\":\"Verifique divergências fiscais nos documentos.\",\"documentos\":[{\"idDocumento\":\"doc-001\",\"nome\":\"NFe-123.xml\",\"tipo\":\"application/xml\",\"texto\":\"<?xml version=\\\"1.0\\\" encoding=\\\"UTF-8\\\"?><nfeProc versao=\\\"4.00\\\" xmlns=\\\"http://www.portalfiscal.inf.br/nfe\\\">…</nfeProc>\"}],\"contexto\":{\"idioma\":\"pt-BR\",\"instrucoes\":\"Analisar conforme a especialidade do agente.\"}}"
+        }
+      ]
     }
   }
 }
 ```
 
-- **Parte de texto**: resumo textual em pt-BR (FR-025, NFR-010).
-- **Parte de arquivo JSON**: envelope v1 completo, produzido a partir de um `DataContent`
-  `application/json` (o SDK converte `DataContent` em parte de arquivo). O cliente DEVE decodificar
-  `raw` e validar `versaoEnvelope`.
-- **Metadados**: identificadores e estado preenchidos pelo sistema (FR-054, P09), copiados do
-  envelope para leitura rápida. Em caso de divergência, prevalece o envelope.
+| Campo A2A | Regra |
+| --------- | ----- |
+| `method` | `message/send` |
+| `params.message.role` | `user` |
+| `params.message.messageId` | Obrigatório (A2A); não é usado como identificador de negócio |
+| `params.message.contextId` | Opcional; não abre nem continua sessão (o contrato v1 não tem sessão). Quando informado, é devolvido na Task |
+| `params.message.parts` | Exatamente uma parte `kind: "text"` com o JSON da `SolicitacaoAnaliseSofia` em UTF-8 |
+| `params.configuration` | A SOFIA DEVE omitir o campo ou enviar `"blocking": true`. Com `blocking: false`, a camada de compatibilidade pode devolver só o retrato inicial da Task, e o resultado não é garantido na resposta (fora do contrato) |
 
-### 5.2 Envelope v1 (resumo)
-
-Definição completa em [data-model.md](../data-model.md) §16 e no schema `EnvelopeV1` de
-[api-agente.openapi.yaml](./api-agente.openapi.yaml). Exemplo reduzido de análise:
+### 3.2 `SolicitacaoAnaliseSofia`
 
 ```json
 {
-  "versaoEnvelope": "1.0",
-  "versaoContratoIa": "1.0",
-  "execucaoId": "0193f0c2-6a00-7b00-8c00-0000000000aa",
-  "sessaoId": "0193f0c2-6a00-7b00-8c00-0000000000bb",
-  "correlacaoId": "sofia-2026-11-04-000123",
-  "canal": "A2A",
-  "estado": "Concluida",
-  "dataHora": "2026-11-04T14:03:12Z",
-  "usuarioIdentificado": true,
-  "etapas": [
-    { "numero": 4, "nome": "Validação de estrutura e schema", "estado": "Executada" },
-    { "numero": 5, "nome": "Consulta aos manuais por MCP", "estado": "NaoAplicavel", "justificativa": "integração não habilitada" }
+  "versaoContrato": "1.0",
+  "idExecucao": "8b2f0ad6-c2e4-4a68-8bdd-20f785bc798e",
+  "idSolicitacao": "e1b3a4cb-d729-4bd4-b796-b9c94be07b46",
+  "usuario": { "nome": "Maria Oliveira" },
+  "pergunta": "Verifique divergências fiscais nos documentos.",
+  "documentos": [
+    { "idDocumento": "doc-001", "nome": "NFe-123.xml", "tipo": "application/xml", "texto": "<?xml version=\"1.0\" encoding=\"UTF-8\"?><nfeProc versao=\"4.00\" xmlns=\"http://www.portalfiscal.inf.br/nfe\">…</nfeProc>" },
+    { "idDocumento": "doc-002", "nome": "pedido.txt", "tipo": "text/plain", "texto": "Pedido de compra número 123..." }
   ],
-  "parecer": {
-    "resumoQuantitativo": { "recebidos": 2, "analisados": 2, "comAchados": 1, "naoAnalisados": 0 },
-    "resultadoGeral": "ComInconsistencias",
-    "documentos": [
+  "contexto": { "idioma": "pt-BR", "instrucoes": "Analisar conforme a especialidade do agente." }
+}
+```
+
+| Campo | Obrigatório | Regras do contrato SOFIA | Regras adicionais do agente |
+| ----- | ----------- | ------------------------ | --------------------------- |
+| `versaoContrato` | Sim | Igual a `"1.0"` | Outro valor → ERR-007 |
+| `idExecucao` | Sim | UUID gerado pela SOFIA para a orquestração | Devolvido sem alteração |
+| `idSolicitacao` | Sim | UUID distinto por chamada a cada agente; retentativas reutilizam | Devolvido sem alteração; vira o `correlacaoId` da execução |
+| `usuario.nome` | Sim | Não vazio; só contexto de negócio | Até 200 caracteres; identifica o usuário na v1 (§4.2); dado pessoal |
+| `pergunta` | Sim | Não vazia | Até 4.000 caracteres (mesmo limite do canal direto) |
+| `documentos` | Sim | Array não vazio | Até `Limites:QuantidadeArquivos` itens (ERR-003) |
+| `documentos[].idDocumento` | Sim | Não vazio | Até 128 caracteres; único na solicitação (repetido → ERR-007) |
+| `documentos[].nome` | Sim | Não vazio | Saneado, sem caminho, como no canal direto |
+| `documentos[].tipo` | Não | MIME | Informativo; o tipo real é decidido pelo conteúdo (FR-006) |
+| `documentos[].texto` | Sim | Não vazio | Conteúdo do XML como texto; soma dos bytes UTF-8 de todos os textos até `Limites:TamanhoTotalBytes` (ERR-002) |
+| `contexto` | Não | `idioma`, `instrucoes` | `idioma` diferente de `pt-BR` não muda o idioma da resposta (NFR-010); `instrucoes` é dado não confiável e não é aplicado como instrução (FR-053) |
+
+Campos desconhecidos são ignorados (evolução compatível da v1). Os limites são validados antes de
+qualquer análise (NFR-002), sem truncar textos.
+
+## 4. Mapeamento para o caso de uso
+
+O adaptador A2A só traduz; a análise é a mesma do canal direto (P18).
+
+### 4.1 Documentos
+
+- Cada item de `documentos` vira um arquivo recebido: `nome` → nome do arquivo, bytes UTF-8 de
+  `texto` → conteúdo, `idDocumento` → `ArquivoRecebido.idDocumento` (data-model §3).
+- O texto é lido como caracteres: a declaração `encoding` do XML não muda a decodificação. As demais
+  regras de leitura segura valem sem exceção (DTD proibido, sem entidades externas, profundidade
+  máxima — constitution 5.2).
+- Documento que não é XML bem formado ou não é NF-e modelo 55 4.00 (por exemplo, `pedido.txt`)
+  segue o tratamento por arquivo do canal direto (ERR-008 a ERR-010, ERR-023) e torna o resultado
+  `parcial` (§5.3).
+- Os textos são documentos não confiáveis: nenhum conteúdo é interpretado como instrução ao agente
+  (FR-053, constitution P07).
+
+### 4.2 Identificação (D-05)
+
+- `chamadorId` = `A2A:ChamadorPadrao` (inicial `"sofia"`). Na v1 não há credencial; com o fim do
+  D-05, passa a ser o da credencial de serviço autenticada.
+- `usuarioNome` = `usuario.nome` sem espaços nas pontas. É persistido na sessão e na execução
+  (data-model §1 e §2), com a retenção do ADR-0005, e NÃO DEVE aparecer em logs, no envio ao
+  provedor de IA (ADR-0004) nem no contexto do usuário (FR-055a).
+- `usuarioId` = `"nome-sha256:"` + SHA-256 hexadecimal minúsculo do nome normalizado (Unicode NFC,
+  espaços internos reduzidos a um, minúsculas invariantes). A chave de isolamento é calculada como no
+  canal direto, a partir de `chamadorId` e `usuarioId`.
+- O mesmo nome normalizado leva ao mesmo contexto do usuário. Homônimos compartilham contexto até a
+  autenticação (risco do D-05).
+
+### 4.3 Execução
+
+- Tipo `AnaliseComPergunta`, canal `A2A`, uma sessão nova por solicitação (sem continuidade).
+- `idExecucao` e `idSolicitacao` da SOFIA são gravados na execução (`idExecucaoSofia`,
+  `idSolicitacaoSofia`); `correlacaoId` = `idSolicitacao`.
+- Retentativa com o mesmo `idSolicitacao` gera nova execução, com os mesmos IDs da SOFIA; as duas
+  ficam registradas, inclusive o consumo de IA (P14).
+
+## 5. Resposta (agente → SOFIA)
+
+### 5.1 Envelope A2A: Task concluída com Artifact
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": "rpc-001",
+  "result": {
+    "kind": "task",
+    "id": "0193f0c3-0000-7000-8000-0000000000c1",
+    "contextId": "0193f0c3-0000-7000-8000-0000000000c2",
+    "status": { "state": "completed", "timestamp": "2026-11-05T14:03:12Z" },
+    "artifacts": [
       {
-        "arquivo": "nfe-0002.xml",
-        "chaveAcesso": "<44 caracteres>",
-        "dataReferencia": "2026-09-15",
-        "origemDataReferencia": "dhRecbto",
-        "pacoteAplicado": "PL_010e_v1.02",
-        "pacotesTentados": ["PL_010e_v1.02"],
-        "emConvivencia": false,
-        "validacaoLayout": "Realizada",
-        "validacaoConteudo": "Realizada"
+        "artifactId": "0193f0c3-0000-7000-8000-0000000000c3",
+        "name": "analise-sofia-v1",
+        "parts": [
+          {
+            "kind": "text",
+            "text": "{\"versaoContrato\":\"1.0\",\"idExecucao\":\"8b2f0ad6-c2e4-4a68-8bdd-20f785bc798e\",\"idSolicitacao\":\"e1b3a4cb-d729-4bd4-b796-b9c94be07b46\",\"agente\":{\"idAgente\":\"agente-auditoria-nfe\",\"nome\":\"AgenteAuditoriaNFe\"},\"status\":\"parcial\",\"analise\":\"…\",\"achados\":[…],\"observacoes\":[…],\"erro\":null}"
+          }
+        ]
       }
-    ],
-    "achados": [
-      {
-        "id": "0193f0c2-7000-7000-8000-000000000101",
-        "categoria": "InconsistenciaNegocio",
-        "severidade": "Alta",
-        "origem": "Deterministica",
-        "arquivo": "nfe-0002.xml",
-        "campo": "NFe/infNFe/total/ICMSTot/vICMS",
-        "valorInformado": "<valor do XML>",
-        "valorEsperado": "<soma dos itens>",
-        "regraId": "W04-10",
-        "versaoRegra": 1,
-        "descricao": "Total do ICMS diferente da soma do ICMS dos itens.",
-        "evidencias": [{ "tipo": "RegraCatalogo", "regraId": "W04-10", "versaoCatalogo": "1" }]
-      }
-    ],
-    "limitacoes": ["consulta a manuais oficiais não habilitada"],
-    "validacoesNaoRealizadas": [],
-    "revisaoHumana": { "necessaria": true, "motivos": ["consulta a manuais oficiais não habilitada"] },
-    "recomendacoes": [
-      { "id": "0193f0c2-7000-7000-8000-000000000201", "estado": "PendenteAprovacao", "rotulo": "Recomendação demonstrativa" }
-    ],
-    "integracaoMcp": { "habilitada": false },
-    "resumoTextual": "..."
-  },
-  "metadados": {
-    "modelo": "<modelo configurado>",
-    "duracaoMs": 18432,
-    "consumo": { "tokensEntrada": 5120, "tokensSaida": 860, "custoEstimado": null, "moeda": null, "origem": "InformadoProvedor", "registroCompleto": true }
+    ]
   }
 }
 ```
 
-Em perguntas, `parecer` é omitido e `resposta` traz `texto`, `valoresCitados` (com `calculoId` ou campo
-de origem) e `documentosExcluidos` (FR-026 a FR-031).
+- A Task é devolvida já no estado final (`completed` ou `failed`); estados intermediários não são
+  observáveis na v1 (desvio D-04, §7).
+- O Artifact tem `name = "analise-sofia-v1"` e exatamente uma parte de texto com o JSON do
+  `ResultadoAnaliseSofia` em UTF-8. `contextId` é o recebido ou, na falta, gerado pelo sistema.
 
-### 5.3 Consulta de recomendações (FR-035g)
-
-Solicitação com `metadata.operacao = "consultar-recomendacoes"` e `execucaoId` ou `sessaoId`. O
-envelope traz `recomendacoes`:
+### 5.2 `ResultadoAnaliseSofia`
 
 ```json
 {
-  "recomendacoes": [
-    { "id": "…201", "estado": "Aprovada", "rotulo": "Recomendação demonstrativa", "aviso": "…", "texto": "…", "achadosVinculados": ["…101"] },
-    { "id": "…202", "estado": "PendenteAprovacao", "rotulo": "Recomendação demonstrativa" },
-    { "id": "…203", "estado": "Rejeitada", "rotulo": "Recomendação demonstrativa" },
-    { "id": "…204", "estado": "Indisponivel", "rotulo": "Recomendação demonstrativa" }
-  ]
+  "versaoContrato": "1.0",
+  "idExecucao": "8b2f0ad6-c2e4-4a68-8bdd-20f785bc798e",
+  "idSolicitacao": "e1b3a4cb-d729-4bd4-b796-b9c94be07b46",
+  "agente": { "idAgente": "agente-auditoria-nfe", "nome": "AgenteAuditoriaNFe" },
+  "status": "parcial",
+  "analise": "Foram recebidos 2 documentos e analisado 1. Resultado geral: Com inconsistências. O total do ICMS da NF-e doc-001 difere da soma do ICMS dos itens.",
+  "achados": [
+    {
+      "idAchado": "0193f0c2-7000-7000-8000-000000000101",
+      "descricao": "Inconsistência de negócio: Total do ICMS diferente da soma do ICMS dos itens.",
+      "idDocumentos": ["doc-001"],
+      "evidencias": [
+        "Campo NFe/infNFe/total/ICMSTot/vICMS: valor informado 100.00",
+        "Valor calculado pela regra W04-10 (versão 1): 90.00",
+        "Regra W04-10 do catálogo de regras v1"
+      ],
+      "severidade": "alta"
+    }
+  ],
+  "observacoes": [
+    "doc-001 (NFe-123.xml): NF-e 4.00 validada com o pacote PL_010e_v1.02 (data de referência 2026-09-15, origem dhRecbto).",
+    "doc-002 (pedido.txt): não analisado — documento não suportado (ERR-009).",
+    "Limitação: consulta a manuais oficiais não habilitada.",
+    "Revisão humana recomendada: consulta a manuais oficiais não habilitada.",
+    "Identificador interno da execução: 0193f0c2-6a00-7b00-8c00-0000000000aa."
+  ],
+  "erro": null
 }
 ```
 
-`texto` só aparece em `Liberada` e `Aprovada`; nunca em `PendenteAprovacao`, `Rejeitada` ou
-`Indisponivel` (FR-035c, FR-035g, SC-004a).
+| Campo | Origem | Regras |
+| ----- | ------ | ------ |
+| `versaoContrato` | Sistema | Sempre `"1.0"` |
+| `idExecucao` / `idSolicitacao` | Solicitação | Os mesmos valores recebidos, sem alteração |
+| `agente.idAgente` / `agente.nome` | Configuração | `A2A:IdAgente` e o nome do card |
+| `status` | Sistema | `concluido`, `parcial` ou `erro` (§5.3) |
+| `analise` | Sistema + IA validada | Resumo textual do parecer em pt-BR; em `erro`, a descrição da impossibilidade; sem achados, texto explicativo |
+| `achados` | Parecer | Pode ser `[]` (§5.4) |
+| `observacoes` | Sistema | Lista de textos, na ordem do §5.5 |
+| `erro` | Sistema | `null`, salvo em `status = erro`: `{ "codigo": "ERR-xxx", "mensagem": "<pt-BR>" }`, sem dado sensível |
 
-## 6. Erros
+### 5.3 Status
 
-| Código | Como chega à SOFIA | Estado |
-| ------ | ------------------ | ------ |
-| ERR-007 (estrutura A2A inválida) | Erro de protocolo do SDK A2A (HTTP 400 no HTTP+JSON; erro JSON-RPC no JSON-RPC) | — |
-| ERR-007 (violação deste contrato: parte `url` ou `data`, metadado inválido, mais de uma parte de texto) | Mensagem do agente com envelope `estado = Rejeitada` e `erro` | Rejeitada |
-| ERR-001, ERR-002, ERR-003, ERR-005, ERR-006 | Mensagem do agente com envelope `estado = Rejeitada` e `erro` | Rejeitada |
-| ERR-024 (limite de taxa ou de análises simultâneas) | Mensagem do agente com envelope `estado = Rejeitada` e `erro.detalhes.tentarNovamenteEmSegundos` | Rejeitada |
-| ERR-025 (armazenamento de sessões indisponível) | Mensagem do agente com envelope `estado = Rejeitada` e `erro`; nenhum parecer parcial | Rejeitada |
-| ERR-008 a ERR-012, ERR-023 | No parecer, por arquivo; os demais arquivos seguem | Concluida |
-| ERR-013, ERR-014, ERR-015 | Parecer com resultados determinísticos, resultado "Inconclusiva" e achado de falha técnica | Concluida |
-| ERR-016 | Envelope com etapas concluídas e não executadas | Falhou |
-| ERR-017, ERR-018 | Resposta normal declarando indisponibilidade ou fora de escopo (não são erros técnicos) | Concluida |
-| ERR-004, ERR-019 | Adiados com o desvio D-05; não ocorrem na v1 | — |
+| Status | Quando |
+| ------ | ------ |
+| `concluido` | Execução `Concluida`, todos os documentos com validação de layout e de conteúdo realizadas e resultado geral diferente de "Inconclusiva" |
+| `parcial` | Execução `Concluida` com ao menos um documento não analisado ou com validação não realizada (ERR-008 a ERR-010, ERR-023), ou com resultado geral "Inconclusiva" (ERR-013 a ERR-015) |
+| `erro` | Execução `Rejeitada` ou `Falhou` (ERR-001 a ERR-003, ERR-007, ERR-016, ERR-025) |
 
-Formato de `erro` no envelope: `{ "codigo": "ERR-002", "mensagem": "<pt-BR>", "arquivo": null,
-"detalhes": { "limiteBytes": 5242880, "totalRecebidoBytes": 6291456 } }`.
+### 5.4 Achados
+
+Um item por achado do parecer, na mesma ordem (determinísticos e indícios da IA já validados):
+
+- `idAchado`: o identificador do achado (GUID gerado pelo sistema).
+- `descricao`: categoria legível seguida da descrição do achado, por exemplo "Erro estrutural do
+  documento: …", "Inconsistência de negócio: …", "Indício: …".
+- `idDocumentos`: o `idDocumento` do documento do achado; `[]` para achados do lote. Só IDs
+  recebidos na solicitação.
+- `evidencias`: textos montados pelo sistema a partir das evidências do achado (campo do XML com o
+  valor informado, valor calculado com a regra e a versão, regra do catálogo, trecho de manual com
+  documento e versão). Nenhum trecho é inventado: sem evidência, a lista é `[]` e a ausência fica
+  explícita na descrição ou nas observações.
+- `severidade`: `Alta` → `alta`, `Media` → `media`, `Baixa` → `baixa`; `Informativa` → campo
+  omitido. `critica` não é produzida pela v1.
+
+### 5.5 Observações
+
+Na ordem:
+
+1. uma linha por documento: analisado (pacote aplicado, data de referência e origem, convivência
+   quando houver) ou não analisado (motivo e código ERR);
+2. limitações do parecer;
+3. validações não realizadas;
+4. revisão humana, com os motivos;
+5. recomendações demonstrativas: as liberadas com rótulo, aviso, texto e achados vinculados; as
+   sensíveis como "pendente de aprovação", só com o identificador e sem o conteúdo (FR-035c). A
+   decisão posterior é consultada pelo canal direto (FR-035g);
+6. o identificador interno da execução, para rastreabilidade (NFR-008).
+
+## 6. Erros e falhas
+
+| Situação | Como chega à SOFIA |
+| -------- | ------------------ |
+| JSON-RPC inválido, método desconhecido, `message` ausente | Erro JSON-RPC do SDK, sem Task |
+| Corpo HTTP acima de `Limites:CorpoHttpBytes` | HTTP 413, sem corpo JSON-RPC (falha técnica de transporte) |
+| Limite de taxa ou de análises simultâneas (ERR-024) | HTTP 429 com `Retry-After`, sem corpo JSON-RPC (falha técnica de transporte) |
+| Mensagem sem exatamente uma parte de texto, texto que não é objeto JSON ou sem `idExecucao` e `idSolicitacao` UUID válidos | Task `failed` com mensagem de status "ERR-007: …", sem Artifact (não há como montar um resultado válido) |
+| Demais violações do contrato (`versaoContrato` diferente de `"1.0"`, campo obrigatório ausente ou vazio, `idDocumento` repetido, limites de texto) | Task `completed`, `status: erro`, `erro.codigo = "ERR-007"` |
+| ERR-002, ERR-003 | Task `completed`, `status: erro` |
+| ERR-025 (armazenamento indisponível) | Task `completed`, `status: erro`; nenhum resultado parcial |
+| ERR-016 (tempo máximo esgotado) | Task `completed`, `status: erro` |
+| ERR-008 a ERR-012, ERR-023 (por documento) | Task `completed`, `status: parcial` ou `concluido` (§5.3); detalhes nas observações e nos achados |
+| ERR-013, ERR-014, ERR-015 | Task `completed`, `status: parcial`, resultados determinísticos entregues |
+| ERR-017, ERR-018 | Resposta normal na `analise` (não são erros técnicos) |
+| ERR-004, ERR-019 | Adiados com o desvio D-05 |
+
+As mensagens são as do catálogo de erros em pt-BR (NFR-010), sem caminho de arquivo, conteúdo de
+documento, nome do usuário ou detalhe de infraestrutura.
 
 ## 7. Estados da tarefa e limitações (FR-046)
 
-- O hosting A2A do MAF na versão fixada não suporta respostas em segundo plano
-  (`AgentRunMode.DisallowBackground`). A v1 devolve sempre uma mensagem final, com `estado`
-  `Concluida`, `Falhou` ou `Rejeitada` nos metadados e no envelope. Os estados intermediários
-  "recebida" e "em processamento" não são observáveis por A2A na v1 (desvio D-04 do plano).
+- O agente executa a análise dentro da requisição e devolve a Task no estado final. Os estados
+  intermediários (`submitted`, `working`) podem ser emitidos internamente pelo `TaskUpdater`, mas não
+  são observáveis pela SOFIA na v1 (desvio D-04 revisado).
+- Mapeamento: execução `Concluida` ou `Rejeitada` e ERR-016 → Task `completed` com Artifact; falha
+  sem IDs válidos → Task `failed`.
 - A SOFIA DEVE usar tempo limite de requisição de pelo menos 150 segundos (NFR-001 mais margem). O
   agente encerra a execução no tempo máximo configurado (`Execucao:TempoMaximo`, inicial 120 s) com
   ERR-016.
-- Mapeamento reservado para quando o hosting suportar tarefas: `submitted` → Recebida, `working` →
-  EmProcessamento, `completed` → Concluida, `failed` → Falhou, `rejected` → Rejeitada. A ativação
-  exige nova versão menor do contrato, `AllowBackgroundIfSupported` e os cuidados V-06 e V-10
-  (research R-33).
-- `message:stream` não é contratual na v1 (`capabilities.streaming = false`).
+- As Tasks ficam só em memória (`InMemoryTaskStore`), para uma instância; `tasks/get` de uma Task
+  antiga não é contratual.
 
 ## 8. Versionamento
 
-- Versão do contrato `1.0`, situação `provisorio`, publicadas no card (extensão) e em cada resposta.
-- O acordo com a SOFIA (DP-27) fixa a versão definitiva; se exigir mudanças incompatíveis, ela sai
-  como `2.0`.
-- Alteração compatível (campo opcional novo, nova habilidade): versão menor (`1.1`).
-- Alteração incompatível: nova versão maior, nova URL de interface no card e período de convivência
-  com a versão anterior (NFR-012, P18).
+- Versão do contrato `1.0`, publicada no card (extensão) e em cada resultado.
+- Alteração compatível (campo opcional novo): continua `1.x`, com acordo da turma para os nomes.
+- Alteração incompatível: nova versão maior, testes de compatibilidade e período de convivência
+  (NFR-012, P18).
+- Mudança do perfil de protocolo (por exemplo, A2A 1.0 nativo sem a camada v0.3) não muda a versão
+  do contrato de negócio, mas exige acordo com a SOFIA, novo card e testes de contrato.
 
-## 9. Uso pelo Sofia.Simulator
+## 9. Campos de protocolo e campos do contrato
+
+| Pertence ao A2A (transporte) | Pertence ao contrato SOFIA (negócio) |
+| ---------------------------- | ------------------------------------ |
+| `jsonrpc`, `id`, `method`, `params.configuration` | `versaoContrato` |
+| `message.kind`, `role`, `messageId`, `contextId`, `parts[].kind` | `idExecucao`, `idSolicitacao` |
+| `result.kind`, `id` (Task), `contextId`, `status.state`, `status.timestamp` | `usuario.nome`, `pergunta`, `contexto` |
+| `artifacts[].artifactId`, `name`, `parts[].kind` | `documentos[]` (`idDocumento`, `nome`, `tipo`, `texto`) |
+| Agent Card (`url`, `capabilities`, `skills`, `protocolVersion`) | `agente`, `status`, `analise`, `achados[]`, `observacoes`, `erro` |
+| Autenticação (D-05, futura credencial de serviço) | — |
+
+## 10. Uso pelo Sofia.Simulator
+
+O simulador usa o cliente oficial do perfil v0.3 (`A2A.V0_3`) e só o contrato público (FR-048).
 
 | Cenário | Comportamento esperado | Referência |
 | ------- | ---------------------- | ---------- |
-| Descoberta | Obtém o card, valida campos do FR-044 e exibe habilidades, limites e a ausência de autenticação | TS-029 |
-| Fluxo básico | Envia pergunta e XMLs de exemplo sintéticos, com `usuarioId` e `chamadorId`; exibe estado, resumo, parecer (inclusive pacote aplicado por documento), `execucaoId` e `sessaoId` | TS-035 |
+| Descoberta | Obtém o card v0.3, valida campos do FR-044 e exibe habilidade, `idAgente`, limites e a ausência de autenticação | TS-029 |
+| Fluxo básico | Envia `message/send` com uma `SolicitacaoAnaliseSofia` (IDs gerados, nome fictício, pergunta e XMLs sintéticos); exibe estado da Task, `status`, `analise`, achados, observações e confere os IDs devolvidos | TS-035 |
 | Card inacessível | Informa falha de descoberta e não envia solicitação | TS-035a |
-| Continuidade (opcional) | Reenvia `contextId` e `sessaoId` com nova pergunta | TS-021 |
-| Recomendações (opcional) | Usa `consultar-recomendacoes` com o `execucaoId` | TS-039 |
-| Sem identificação (opcional) | Envia sem `usuarioId` e `chamadorId`; o parecer indica usuário não identificado | TS-059 |
+| Documento não suportado (opcional) | Inclui um texto que não é NF-e; exibe `status: parcial` | TS-065 |
+| Contrato inválido (opcional) | Envia `versaoContrato: "2.0"`; exibe `status: erro` com ERR-007 | TS-066 |

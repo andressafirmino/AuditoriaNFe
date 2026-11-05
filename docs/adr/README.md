@@ -20,6 +20,7 @@ Decisões de arquitetura do AgenteAuditoriaNFe, conforme a DP-20 da constitution
 | [0008](./0008-ci-protecao-main.md) | CI, branches `dev` e `main` e proteção | Aprovado |
 | [0009](./0009-observabilidade-opentelemetry.md) | Observabilidade com OpenTelemetry | Aprovado |
 | [0010](./0010-schemas-xsd-versionados.md) | Schemas XSD oficiais versionados e seleção pela data de referência | Aprovado |
+| [0011](./0011-contrato-sofia-v1-a2a-v03.md) | Contrato SOFIA v1.0 sobre A2A v0.3 (substitui o 0007 quando aprovado) | Proposto |
 
 ## Modelo
 

@@ -18,7 +18,7 @@ pela SOFIA; disponibilizar um projeto cliente chamado Sofia.Simulator para valid
 Defina requisitos funcionais, requisitos não funcionais, histórias de usuário, critérios de
 aceitação, tratamento de erros e cenários de teste."
 
-**Constitution**: v2.1.0 — princípios P01–P18 aplicáveis. Os termos DEVE, NÃO DEVE e PODE seguem a
+**Constitution**: v2.2.0 — princípios P01–P18 aplicáveis. Os termos DEVE, NÃO DEVE e PODE seguem a
 convenção da constitution.
 
 ## Clarifications
@@ -47,7 +47,8 @@ convenção da constitution.
   severidade Alta ou que mencionem valores financeiros ou tributos.
 - Q: Como a aprovação acontece e o que a SOFIA recebe enquanto está pendente? → A: O parecer é
   entregue na hora com as recomendações sensíveis retidas como "pendente de aprovação"; um aprovador
-  decide pelo canal direto, e a SOFIA consulta depois as recomendações liberadas.
+  decide pelo canal direto, e a SOFIA consulta depois as recomendações liberadas. *(A consulta
+  passou a ser só pelo canal direto na sessão 2026-11-05.)*
 - Q: Qual o escopo obrigatório do Sofia.Simulator? → A: Fluxo básico obrigatório (descobrir o Agent
   Card e enviar uma solicitação A2A com XMLs e pergunta); sessão e cenários de erro são opcionais;
   os demais cenários ficam nos testes automatizados.
@@ -80,6 +81,7 @@ convenção da constitution.
   usuário pertence à SOFIA.
 - Q: O contrato com a SOFIA está definido? → A: Não. O contrato A2A desta feature é uma proposta v1
   provisória até a resolução da DP-27; o núcleo do agente é testável pelo canal direto.
+  *(Substituída na sessão 2026-11-05 pelo contrato SOFIA v1.0.)*
 - Q: Quais informações o agente guarda no contexto de cada usuário? → A: CNPJs emitentes e
   destinatários já auditados pelo usuário, com a quantidade de documentos; resumo dos achados
   recorrentes (regra ou tipo de erro e frequência), derivados dos resultados dos validadores; e
@@ -104,6 +106,23 @@ convenção da constitution.
   com o tempo para nova tentativa) e ERR-025 (armazenamento de sessões e execuções indisponível,
   sem análise parcial). Aprovado por Andressa Firmino, 2026-11-04, na análise de consistência das
   tarefas.
+
+### Session 2026-11-05
+
+- Q: Qual é o contrato com a SOFIA? → A: O contrato SOFIA v1.0 da INFIS (resolve a DP-27,
+  constitution 2.2.0): A2A v0.3.x com `message/send`; a SOFIA envia uma `SolicitacaoAnaliseSofia`
+  com `idExecucao`, `idSolicitacao`, nome do usuário, pergunta e documentos já convertidos em texto,
+  e o agente devolve uma Task concluída com um Artifact contendo o `ResultadoAnaliseSofia`. O
+  contrato provisório de 2026-11-04 é substituído (ADR-0011, proposto).
+- Q: O canal A2A mantém as operações do contrato provisório (pergunta sem documentos, continuidade
+  de sessão, consulta de recomendações)? → A: Não. O canal A2A fala só o contrato SOFIA v1.0, que
+  cobre a análise de documentos com pergunta; as demais operações ficam no canal direto.
+- Q: Como o usuário é identificado no A2A sem autenticação? → A: Pelo `usuario.nome` do contrato,
+  persistido na sessão e na execução e fora de logs, do envio ao provedor de IA e do contexto do
+  usuário. O identificador usado no isolamento é derivado do nome por hash; o chamador é o padrão
+  configurado (`sofia`). A autenticação substitui esse modelo no fim do desvio D-05.
+- Q: Qual `idAgente` o agente publica? → A: `agente-auditoria-nfe`, configurável, igual ao do
+  registry da SOFIA.
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -157,30 +176,41 @@ problemas conhecidos de cada arquivo.
 
 ### User Story 2 - SOFIA descobre o agente e o invoca por A2A (Priority: P1)
 
-A SOFIA obtém o Agent Card do AuditoriaNFe, identifica as habilidades disponíveis, os formatos
-aceitos e os requisitos de autenticação, e envia por A2A uma solicitação de análise com XMLs e uma
-pergunta, recebendo o mesmo parecer que o canal direto produziria.
+A SOFIA obtém o Agent Card do AuditoriaNFe, identifica a habilidade, os formatos aceitos, os
+limites e a versão do contrato, e envia por A2A uma `SolicitacaoAnaliseSofia` (contrato SOFIA
+v1.0) com o nome do usuário, uma pergunta e os XMLs já convertidos em texto. Recebe uma Task
+concluída com um `ResultadoAnaliseSofia` que traduz o mesmo parecer que o canal direto produziria.
 
 **Why this priority**: o agente existe para ser usado pela SOFIA. Sem A2A e Agent Card, o agente não
 cumpre seu objetivo de integração.
 
-**Independent Test**: com um cliente A2A (por exemplo, o Sofia.Simulator), obter o Agent Card,
-enviar um lote conhecido e comparar o parecer recebido com o parecer do mesmo lote pelo canal
-direto.
+**Independent Test**: com um cliente A2A v0.3 (por exemplo, o Sofia.Simulator), obter o Agent
+Card, enviar uma solicitação com um lote conhecido e comparar os achados recebidos com o parecer
+do mesmo lote pelo canal direto.
 
 **Acceptance Scenarios**:
 
 1. **Given** o agente em execução, **When** a SOFIA consulta o endereço de descoberta, **Then**
-   recebe um Agent Card válido com nome, descrição, versão, habilidades, formatos de entrada e
-   saída, limites e requisitos de autenticação.
-2. **Given** um Agent Card obtido, **When** a SOFIA envia por A2A uma pergunta e um lote de XMLs,
-   **Then** recebe o parecer estruturado e um resumo textual, com identificadores
-   de execução e de sessão.
-3. **Given** o mesmo lote enviado pelo canal direto e por A2A, **When** os dois pareceres são
+   recebe um Agent Card v0.3 válido com nome, descrição, versão, a habilidade
+   `analisar_documentos`, formatos de entrada e saída, limites, versão do contrato, `idAgente` e a
+   indicação de ausência de autenticação.
+2. **Given** um Agent Card obtido, **When** a SOFIA envia por `message/send` uma
+   `SolicitacaoAnaliseSofia` válida com uma pergunta e XMLs, **Then** recebe uma Task `completed`
+   com um Artifact `analise-sofia-v1` contendo um `ResultadoAnaliseSofia` com os mesmos
+   `idExecucao` e `idSolicitacao`, o `idAgente` do card, status, análise, achados e observações.
+3. **Given** o mesmo lote enviado pelo canal direto e por A2A, **When** os dois resultados são
    comparados, **Then** os achados determinísticos (erros estruturais e inconsistências de
-   negócio) são idênticos.
-4. *(Adiado — desvio D-05)* **Given** uma chamada A2A sem credencial ou com credencial inválida,
+   negócio) são os mesmos, com a mesma severidade traduzida.
+4. **Given** uma solicitação em que um dos documentos não é NF-e suportada, **When** ela é
+   processada, **Then** o resultado tem status `parcial`, e as observações informam o documento
+   não analisado e o motivo.
+5. **Given** uma solicitação com `versaoContrato` diferente de `"1.0"` ou sem campo obrigatório,
+   **When** ela é recebida, **Then** o resultado tem status `erro` com `ERR-007`, sem análise.
+6. *(Adiado — desvio D-05)* **Given** uma chamada A2A sem credencial ou com credencial inválida,
    **When** ela é recebida, **Then** é recusada sem executar nenhuma análise.
+
+Perguntas sem documentos, continuidade de sessão e consulta posterior de recomendações não fazem
+parte do contrato SOFIA v1.0 e ficam no canal direto (User Stories 3, 4 e 7).
 
 ---
 
@@ -236,6 +266,9 @@ anterior.
 5. **Given** uma sessão expirada, **When** o usuário a informa, **Then** recebe erro explícito de
    sessão expirada e pode iniciar uma nova sessão.
 
+A continuidade de sessão é do canal direto. Pelo A2A (contrato SOFIA v1.0), cada solicitação abre
+uma sessão nova; a continuidade da conversa é responsabilidade da SOFIA.
+
 ---
 
 ### User Story 5 - Receber recomendações demonstrativas identificadas (Priority: P3)
@@ -267,25 +300,27 @@ alterar o resultado do parecer.
 ### User Story 7 - Aprovar a liberação de recomendações sensíveis (Priority: P3)
 
 O aprovador consulta, pelo canal direto, as recomendações sensíveis pendentes, lê o conteúdo e os
-achados relacionados e aprova ou rejeita cada uma. Depois disso, a SOFIA consulta a execução ou a
-sessão e recebe as recomendações aprovadas; as rejeitadas nunca são entregues.
+achados relacionados e aprova ou rejeita cada uma. Depois disso, quem consulta a execução ou a
+sessão pelo canal direto recebe as recomendações aprovadas; as rejeitadas nunca são entregues. O
+contrato SOFIA v1.0 não tem operação de consulta: no resultado A2A, a recomendação sensível aparece
+só como "pendente de aprovação", com o identificador da execução para consulta pelo canal direto.
 
 **Why this priority**: protege o usuário de recomendações com impacto fiscal sem revisão, mas só tem
 efeito quando houver recomendações (User Story 5).
 
 **Independent Test**: gerar um parecer com uma recomendação sensível, aprovar e rejeitar
-recomendações pelo canal direto, e verificar o que a consulta posterior da SOFIA recebe e o que fica
-registrado no checkpoint de aprovação.
+recomendações pelo canal direto, e verificar o que a consulta posterior pelo canal direto recebe e
+o que fica registrado no checkpoint de aprovação.
 
 **Acceptance Scenarios**:
 
 1. **Given** recomendações sensíveis pendentes, **When** o aprovador lista as pendências, **Then**
    vê cada recomendação com seu conteúdo, os achados vinculados, a execução e a sessão de origem.
 2. **Given** uma recomendação pendente, **When** o aprovador a aprova, **Then** a decisão é
-   registrada com aprovador, data e hora, e a próxima consulta da SOFIA a recebe rotulada como
+   registrada com aprovador, data e hora, e a próxima consulta da execução a recebe rotulada como
    "Recomendação demonstrativa".
 3. **Given** uma recomendação pendente, **When** o aprovador a rejeita informando justificativa,
-   **Then** a recomendação nunca é entregue à SOFIA, que recebe apenas a indicação de que foi
+   **Then** a recomendação nunca é entregue, e a consulta recebe apenas a indicação de que foi
    rejeitada.
 4. *(Adiado — desvio D-05)* **Given** um usuário sem papel de aprovador, **When** ele tenta aprovar
    ou rejeitar, **Then** a operação é recusada.
@@ -297,22 +332,25 @@ registrado no checkpoint de aprovação.
 ### User Story 6 - Validar a integração A2A com o Sofia.Simulator (Priority: P2)
 
 O integrador executa o Sofia.Simulator, que se comporta como a SOFIA: descobre o agente pelo Agent
-Card e envia uma solicitação A2A real com XMLs de exemplo e uma pergunta, exibindo o parecer
-recebido. Opcionalmente, o simulador continua a sessão e reproduz cenários de erro.
+Card e envia por A2A v0.3 uma `SolicitacaoAnaliseSofia` real com XMLs sintéticos de exemplo, um
+nome de usuário fictício e uma pergunta, exibindo o resultado recebido. Opcionalmente, o simulador
+reproduz os cenários de documento não suportado e de contrato inválido.
 
-**Why this priority**: permite validar o contrato A2A sem depender da SOFIA real, reduzindo o risco
-da integração.
+**Why this priority**: permite validar o contrato SOFIA v1.0 sem depender da SOFIA real, reduzindo
+o risco da integração.
 
 **Independent Test**: executar o Sofia.Simulator contra uma instância do agente e verificar que ele
-obtém o Agent Card, envia a solicitação e exibe o parecer com identificadores de execução e sessão.
+obtém o Agent Card, envia a solicitação e exibe o resultado com os IDs da solicitação devolvidos.
 
 **Acceptance Scenarios**:
 
 1. **Given** o endereço do agente, **When** o integrador executa o simulador,
-   **Then** o simulador obtém e exibe o Agent Card e as habilidades disponíveis.
-2. **Given** o Agent Card obtido e os XMLs de exemplo, **When** o simulador envia a solicitação A2A
-   com uma pergunta, **Then** exibe o estado da tarefa, o parecer estruturado, o resumo textual e
-   os identificadores de execução e de sessão.
+   **Then** o simulador obtém e exibe o Agent Card, a habilidade, o `idAgente`, os limites e a
+   ausência de autenticação.
+2. **Given** o Agent Card obtido e os XMLs de exemplo, **When** o simulador envia a solicitação
+   com uma pergunta, **Then** exibe o estado da Task, o status, a análise, os achados e as
+   observações do `ResultadoAnaliseSofia` e confirma que `idExecucao` e `idSolicitacao` voltaram
+   sem alteração.
 3. **Given** o agente indisponível ou o Agent Card inacessível, **When** o simulador é executado,
    **Then** ele informa a falha de descoberta de forma clara e termina sem enviar a solicitação.
 
@@ -504,9 +542,10 @@ obtém o Agent Card, envia a solicitação e exibe o parecer com identificadores
 - **FR-035f**: Cada decisão DEVE ser registrada em um checkpoint de aprovação com: identificador da
   recomendação, execução, sessão, estado (pendente, aprovada ou rejeitada), aprovador, data e hora
   e justificativa, quando houver.
-- **FR-035g**: A SOFIA DEVE poder consultar, por A2A, a execução ou a sessão e receber as
+- **FR-035g**: O canal direto DEVE permitir consultar a execução ou a sessão e receber as
   recomendações aprovadas e o estado das demais. Recomendações rejeitadas NÃO DEVEM ter o conteúdo
-  entregue.
+  entregue. O contrato SOFIA v1.0 não tem operação de consulta; o resultado A2A informa o
+  identificador interno da execução para a consulta pelo canal direto.
 - **FR-035h** *(adiado — desvio D-05)*: Usuários sem papel de aprovador NÃO DEVEM aprovar nem
   rejeitar recomendações.
 - **FR-035i**: Recomendações pendentes DEVEM ficar indisponíveis quando a sessão de origem expirar ou
@@ -569,19 +608,60 @@ obtém o Agent Card, envia a solicitação e exibe o parecer com identificadores
 
 **Exposição por A2A e Agent Card**
 
-- **FR-043**: Todas as funcionalidades do agente (análise de lote, perguntas sobre a base e
-  continuidade de sessão) DEVEM estar disponíveis por A2A, com as mesmas validações, autenticação e
-  resultados do canal direto (constitution P18). A comunicação A2A DEVE ser real, implementada com o
-  SDK oficial do protocolo, e não simulada.
-- **FR-044**: O agente DEVE publicar um Agent Card no endereço de descoberta definido pelo protocolo
-  A2A, contendo: nome, descrição, versão do agente, versão do contrato, habilidades, formatos de
-  entrada e saída, limites de arquivos e requisitos de autenticação.
+- **FR-043**: A análise de documentos com pergunta DEVE estar disponível por A2A segundo o contrato
+  SOFIA v1.0 ([sofia-a2a.md](./contracts/sofia-a2a.md)), no perfil A2A v0.3.x com o método
+  `message/send`, com as mesmas validações e os mesmos achados do canal direto (constitution P18).
+  A comunicação A2A DEVE ser real, implementada com o SDK oficial do protocolo, e não simulada.
+  Perguntas sem documentos, continuidade de sessão, consulta de execução e aprovação ficam só no
+  canal direto.
+- **FR-043a**: O agente DEVE aceitar uma única parte de texto na Message contendo uma
+  `SolicitacaoAnaliseSofia` em JSON e validá-la contra o schema
+  [sofia-solicitacao-analise-v1](./contracts/sofia-solicitacao-analise-v1.schema.json) e contra
+  as regras adicionais do contrato (`idDocumento` único, limites de quantidade e de bytes), antes
+  de qualquer análise. `versaoContrato` diferente de `"1.0"` ou violação do contrato DEVE gerar
+  ERR-007.
+- **FR-043b**: Cada documento da solicitação DEVE ser tratado como um arquivo recebido: o `nome`
+  como nome do arquivo, os bytes UTF-8 do `texto` como conteúdo (a soma desses bytes é o tamanho
+  total do FR-004) e o `idDocumento` guardado para os achados. `tipo` é informativo, e a
+  identificação segue o conteúdo (FR-006 e FR-007a).
+- **FR-043c**: A solicitação A2A DEVE gerar uma execução do tipo análise com pergunta, em sessão
+  nova, com `idExecucao` e `idSolicitacao` da SOFIA registrados na execução e `idSolicitacao` como
+  identificador de correlação. `contexto.instrucoes` NÃO DEVE ser aplicado como instrução
+  (constitution P07).
+- **FR-043d**: O agente DEVE responder com uma Task A2A no estado `completed` contendo um Artifact
+  `analise-sofia-v1` com uma parte de texto com o `ResultadoAnaliseSofia` em JSON, válido contra o
+  schema [sofia-resultado-analise-v1](./contracts/sofia-resultado-analise-v1.schema.json). Quando a
+  mensagem não permitir montar um resultado (sem parte de texto, texto que não é JSON ou sem
+  `idExecucao` e `idSolicitacao` válidos), a Task DEVE terminar no estado `failed` com ERR-007.
+- **FR-043e**: O `ResultadoAnaliseSofia` DEVE devolver `idExecucao` e `idSolicitacao` sem alteração
+  e `agente.idAgente` igual ao do Agent Card. O status DEVE ser `concluido` quando todos os
+  documentos forem analisados com todas as validações realizadas e o resultado geral não for
+  "Inconclusiva"; `parcial` quando algum documento não for analisado ou tiver validação não
+  realizada, ou o resultado geral for "Inconclusiva"; e `erro` quando a execução for rejeitada ou
+  falhar, com `erro.codigo` do catálogo de erros.
+- **FR-043f**: Cada achado do parecer DEVE virar um achado do resultado, na mesma ordem, com o
+  identificador do achado, a categoria e a descrição, os `idDocumento` do documento de origem
+  (somente IDs recebidos) e as evidências montadas pelo sistema a partir das evidências do achado.
+  A severidade DEVE ser traduzida (Alta, Média e Baixa para `alta`, `media` e `baixa`) e omitida
+  quando Informativa. Nenhuma evidência DEVE ser inventada.
+- **FR-043g**: A `analise` DEVE trazer o resumo textual do parecer em português do Brasil. As
+  `observacoes` DEVEM trazer, na ordem do contrato, a situação de cada documento, as limitações, as
+  validações não realizadas, a indicação de revisão humana, as recomendações demonstrativas
+  (sensíveis só como "pendente de aprovação", sem conteúdo) e o identificador interno da execução.
+- **FR-044**: O agente DEVE publicar um Agent Card no endereço de descoberta do protocolo A2A, no
+  formato v0.3 por padrão, contendo: nome, descrição, versão do agente, a habilidade
+  `analisar_documentos`, formatos de entrada e saída, e, em extensão do contrato, a versão do
+  contrato, o `idAgente`, o nome do Artifact, os limites, os documentos suportados e a ausência de
+  autenticação na versão 1.
+- **FR-044a**: O `idAgente` DEVE ser configurável (valor inicial `agente-auditoria-nfe`) e igual ao
+  cadastrado no registry da SOFIA.
 - **FR-045**: O Agent Card NÃO DEVE conter segredos nem dados de usuários.
-- **FR-046**: Para análises que não terminam imediatamente, o agente DEVE informar o estado da
-  tarefa (recebida, em processamento, concluída, falhou, rejeitada) e permitir que a SOFIA obtenha o
-  resultado final.
-- **FR-047**: O agente DEVE aceitar um identificador de correlação enviado pela SOFIA e devolvê-lo
-  na resposta, junto com os identificadores de execução e de sessão gerados pelo agente.
+- **FR-046**: Na versão 1, a Task DEVE ser devolvida na resposta do `message/send` já no estado
+  final; os estados intermediários não são observáveis (desvio D-04). A execução DEVE terminar no
+  tempo máximo configurado (ERR-016), e o tempo limite que a SOFIA deve usar DEVE estar documentado
+  no contrato.
+- **FR-047**: Alterações compatíveis do contrato SOFIA DEVEM manter a versão maior `1`; alterações
+  incompatíveis DEVEM gerar nova versão maior, com testes de compatibilidade (NFR-012).
 
 **Preparação para integrações MCP**
 
@@ -599,17 +679,16 @@ obtém o Agent Card, envia a solicitação e exibe o parecer com identificadores
 **Sofia.Simulator**
 
 - **FR-048**: DEVE ser disponibilizado o projeto cliente Sofia.Simulator, que se comunica com o
-  agente exclusivamente pelo contrato público A2A, usando o SDK oficial do protocolo A2A, sem
-  acesso interno ao agente.
+  agente exclusivamente pelo contrato SOFIA v1.0 sobre A2A v0.3, usando o SDK oficial do protocolo
+  A2A, sem acesso interno ao agente.
 - **FR-049**: O Sofia.Simulator DEVE descobrir o agente obtendo o Agent Card no endereço de
-  descoberta, exibir as habilidades e enviar uma solicitação A2A real com uma pergunta e um ou mais
-  XMLs, exibindo o estado da tarefa, o parecer, o resumo textual e os identificadores de execução e
-  sessão.
+  descoberta, exibir a habilidade, o `idAgente` e os limites, e enviar uma `SolicitacaoAnaliseSofia`
+  real com IDs gerados, nome de usuário fictício, uma pergunta e um ou mais XMLs, exibindo o estado
+  da Task, o status, a análise, os achados e as observações, e conferindo os IDs devolvidos.
 - **FR-050**: O Sofia.Simulator DEVE incluir XMLs de exemplo sintéticos ou anonimizados suficientes
   para o fluxo básico.
-- **FR-051**: O Sofia.Simulator PODE continuar uma sessão, consultar recomendações liberadas e
-  reproduzir cenários de erro; a verificação completa dos cenários de teste fica nos testes
-  automatizados do agente.
+- **FR-051**: O Sofia.Simulator PODE reproduzir os cenários de documento não suportado e de contrato
+  inválido; a verificação completa dos cenários de teste fica nos testes automatizados do agente.
 - **FR-051a**: Se o Agent Card não puder ser obtido, o Sofia.Simulator DEVE informar a falha de
   descoberta e NÃO DEVE enviar a solicitação.
 
@@ -618,22 +697,31 @@ obtém o Agent Card, envia a solicitação e exibe o parecer com identificadores
 - **FR-052** *(adiado — desvio D-05)*: Toda solicitação, pelo canal direto ou por A2A, DEVE exigir
   a credencial de serviço do sistema chamador; solicitações sem credencial válida ou não autorizadas
   DEVEM ser recusadas antes de qualquer análise (constitution 5.2).
-- **FR-052a**: Na versão 1, a solicitação PODE informar nos metadados o identificador do usuário e a
+- **FR-052a**: Na versão 1, a solicitação do canal direto PODE informar nos metadados o identificador do usuário e a
   identificação do chamador. Quando informados, os dois DEVEM ser registrados e usados no isolamento
   de sessões e do contexto do usuário, sem verificação de identidade.
-- **FR-052c**: Quando o identificador do usuário não for informado, a solicitação DEVE ser aceita com
+- **FR-052c**: No canal direto, quando o identificador do usuário não for informado, a solicitação DEVE ser aceita com
   o usuário padrão "anonimo"; quando o chamador não for informado, com o chamador padrão
   "nao-informado". Solicitações com o usuário "anonimo" NÃO DEVEM ler nem gravar contexto do
   usuário, e o parecer DEVE indicar que o usuário não foi identificado.
+- **FR-052d**: No canal A2A, enquanto o desvio D-05 vigorar, o chamador DEVE ser o padrão
+  configurado (valor inicial `sofia`), e o usuário DEVE ser identificado pelo `usuario.nome` do
+  contrato: o nome, sem espaços nas pontas, DEVE ser persistido na sessão e na execução, e o
+  identificador usado no isolamento DEVE ser derivado do nome normalizado por hash. O nome NÃO DEVE
+  aparecer em registros operacionais, no envio ao provedor de IA nem no contexto do usuário, e segue
+  a retenção das sessões e execuções. Nomes iguais compartilham o contexto do usuário até a
+  autenticação.
 - **FR-052b**: Enquanto o desvio D-05 vigorar, o agente SOMENTE PODE ser executado em ambiente local
   de testes, com as portas publicadas apenas na interface local da máquina, e o Agent Card DEVE
   declarar que não há autenticação. Os dados de teste DEVEM ser sintéticos ou anonimizados.
 - **FR-053**: O conteúdo dos XMLs e das perguntas DEVE ser tratado como dado; instruções contidas
   nesse conteúdo NÃO DEVEM alterar regras, contrato de saída ou comportamento do agente
   (constitution P07).
-- **FR-054**: Toda resposta DEVE conter identificador de execução, identificador de sessão, estado
-  do processamento, versão do contrato e data e hora, preenchidos pelo agente, e não pela IA
-  (constitution P09).
+- **FR-054**: Toda resposta do canal direto DEVE conter identificador de execução, identificador
+  de sessão, estado do processamento, versão do contrato e data e hora, preenchidos pelo agente, e
+  não pela IA (constitution P09). No A2A, esses dados vêm da Task (estado e data e hora), do
+  `ResultadoAnaliseSofia` (versão do contrato e IDs da SOFIA) e das observações (identificador
+  interno da execução), também preenchidos pelo agente.
 
 ### Non-Functional Requirements
 
@@ -662,10 +750,11 @@ obtém o Agent Card, envia a solicitação e exibe o parecer com identificadores
 - **NFR-010 (Idioma)**: Pareceres, respostas e mensagens de erro DEVEM estar em português do Brasil.
 - **NFR-011 (Configuração)**: Limites, tempo de expiração de sessão e quantidade de tentativas DEVEM
   ser configuráveis sem alteração do agente.
-- **NFR-012 (Contratos)**: O contrato do parecer, o contrato A2A e o Agent Card DEVEM ser
+- **NFR-012 (Contratos)**: O contrato do parecer, o contrato SOFIA e o Agent Card DEVEM ser
   versionados; alterações incompatíveis DEVEM gerar nova versão.
-- **NFR-013 (Interoperabilidade)**: O Agent Card e as mensagens DEVEM ser válidos segundo a versão
-  do protocolo A2A adotada no projeto (constitution DP-17).
+- **NFR-013 (Interoperabilidade)**: O Agent Card, as mensagens e as Tasks DEVEM ser válidos no
+  perfil A2A v0.3.x, e a solicitação e o resultado DEVEM ser válidos contra os JSON Schemas do
+  contrato SOFIA v1.0.
 
 ### Error Handling
 
@@ -681,7 +770,7 @@ parecer; erros por arquivo são registrados no parecer, e os demais arquivos seg
 | ERR-004 | *(Adiado — desvio D-05)* Não autenticado ou não autorizado | Recusar sem executar análise e sem detalhar o motivo de segurança | Solicitação |
 | ERR-005 | Sessão inexistente ou de outro usuário | Responder "sessão não encontrada" | Solicitação |
 | ERR-006 | Sessão expirada | Responder "sessão expirada" e orientar o início de nova sessão | Solicitação |
-| ERR-007 | Mensagem A2A malformada ou fora do contrato | Rejeitar com erro de protocolo, sem executar análise | Solicitação |
+| ERR-007 | Mensagem A2A malformada ou fora do contrato SOFIA v1.0 | Rejeitar sem executar análise: resultado com status `erro`, ou Task `failed` quando não houver IDs válidos para montar o resultado | Solicitação |
 | ERR-008 | Arquivo não é XML bem formado | Erro estrutural do documento; demais arquivos seguem | Arquivo |
 | ERR-009 | XML não é NF-e, ou modelo não suportado | Validação "não realizada — documento não suportado" | Arquivo |
 | ERR-010 | Versão de layout não suportada | Validação "não realizada — versão não suportada" | Arquivo |
@@ -707,9 +796,10 @@ parecer; erros por arquivo são registrados no parecer, e os demais arquivos seg
   origem, histórico de perguntas e respostas, base de documentos analisados, data de criação e de
   última atividade e estado (ativa, expirada ou encerrada).
 - **Execução**: processamento de uma solicitação; contém identificador, correlação recebida,
-  sessão, canal (direto ou A2A), estado de cada etapa, estado final, tempos e consumo de IA.
-- **Arquivo recebido**: arquivo enviado em uma execução; contém nome, tamanho, resultado da
-  identificação e estado de cada validação.
+  sessão, canal (direto ou A2A), IDs da SOFIA (`idExecucao` e `idSolicitacao`) e nome do usuário
+  quando vier por A2A, estado de cada etapa, estado final, tempos e consumo de IA.
+- **Arquivo recebido**: arquivo enviado em uma execução; contém nome, tamanho, `idDocumento` quando
+  vier por A2A, resultado da identificação e estado de cada validação.
 - **Documento NF-e**: documento identificado a partir de um arquivo; contém chave de acesso,
   modelo, versão de layout, presença de protocolo e dados extraídos usados nas validações e nas
   respostas.
@@ -734,10 +824,14 @@ parecer; erros por arquivo são registrados no parecer, e os demais arquivos seg
   aprovada, rejeitada ou indisponível).
 - **Checkpoint de aprovação**: registro da decisão humana sobre uma recomendação sensível; contém
   identificador da recomendação, execução, sessão, estado, aprovador, data e hora e justificativa.
-- **Agent Card**: descrição pública do agente para descoberta, com habilidades, formatos, limites e
-  requisitos de autenticação.
-- **Solicitação do simulador**: chamada A2A enviada pelo Sofia.Simulator, com pergunta, XMLs de
-  exemplo e o parecer recebido em resposta.
+- **Agent Card**: descrição pública do agente para descoberta, com habilidade, formatos, limites,
+  versão do contrato, `idAgente` e requisitos de autenticação.
+- **Solicitação de análise SOFIA**: mensagem do contrato SOFIA v1.0 com versão do contrato, IDs da
+  orquestração, nome do usuário, pergunta, documentos em texto e contexto opcional.
+- **Resultado de análise SOFIA**: tradução do parecer para o contrato SOFIA v1.0, com os IDs
+  recebidos, identificação do agente, status, análise, achados, observações e erro.
+- **Solicitação do simulador**: `SolicitacaoAnaliseSofia` enviada pelo Sofia.Simulator, com
+  pergunta, XMLs de exemplo e o resultado recebido em resposta.
 
 ### Test Scenarios
 
@@ -775,19 +869,19 @@ ele PODE executá-lo. Os XMLs de teste DEVEM ser sintéticos ou anonimizados.
 | TS-026 | Base de conhecimento indisponível | ERR-013; resultado "Inconclusiva" | FR-019, NFR-006 | Não |
 | TS-027 | Provedor de IA indisponível | ERR-014; resultados determinísticos entregues | FR-019, NFR-006 | Não |
 | TS-028 | Resposta da IA inválida repetidamente | ERR-015 após o limite de tentativas | FR-028 | Não |
-| TS-029 | Descoberta pelo Agent Card | Agent Card válido com todos os campos de FR-044 | FR-044, FR-045, NFR-013 | Obrigatório |
-| TS-030 | Mesmo lote por canal direto e por A2A | Achados determinísticos idênticos | FR-043 | Opcional |
+| TS-029 | Descoberta pelo Agent Card | Agent Card v0.3 válido com todos os campos de FR-044, `idAgente` configurado e sem segredos | FR-044, FR-044a, FR-045, NFR-013 | Obrigatório |
+| TS-030 | Mesmo lote por canal direto e por A2A | Achados determinísticos iguais, com a severidade traduzida e os `idDocumento` corretos | FR-043, FR-043b, FR-043f | Opcional |
 | TS-031 | *(Adiado — desvio D-05)* Chamada sem credencial ou com credencial inválida | ERR-004 | FR-052 | Opcional |
-| TS-032 | Mensagem A2A malformada | ERR-007 | FR-043 | Opcional |
-| TS-033 | Análise longa por A2A | Estados da tarefa informados e resultado final obtido | FR-046 | Opcional |
-| TS-034 | Correlação enviada pela SOFIA | Correlação devolvida com identificadores de execução e sessão | FR-047, FR-054 | Opcional |
-| TS-035 | Fluxo básico do simulador: descoberta e solicitação A2A com XMLs e pergunta | Parecer, estado da tarefa e identificadores exibidos | FR-049, FR-050 | Obrigatório |
+| TS-032 | Mensagem A2A sem parte de texto, com texto que não é JSON ou sem IDs válidos | Task `failed` com ERR-007, sem Artifact e sem análise | FR-043a, FR-043d | Opcional |
+| TS-033 | Análise por A2A no tempo máximo e acima dele | Task devolvida no estado final; acima do tempo máximo, resultado `erro` com ERR-016 | FR-046 | Opcional |
+| TS-034 | IDs da SOFIA na solicitação | `idExecucao` e `idSolicitacao` devolvidos sem alteração, gravados na execução e com `idSolicitacao` como correlação; resultado válido contra o schema | FR-043c, FR-043d, FR-043e | Opcional |
+| TS-035 | Fluxo básico do simulador: descoberta e `SolicitacaoAnaliseSofia` com XMLs e pergunta | Estado da Task, status, análise, achados, observações e IDs conferidos exibidos | FR-049, FR-050 | Obrigatório |
 | TS-035a | Agent Card inacessível para o simulador | Falha de descoberta informada; nenhuma solicitação enviada | FR-051a | Obrigatório |
 | TS-036 | Sessão após análise concluída | XML original não mantido; apenas dados extraídos e resultados disponíveis | FR-037a | Não |
 | TS-037 | Pergunta de continuidade sobre campo não extraído | Limitação declarada e reenvio orientado, sem estimativa | FR-037b | Não |
 | TS-038 | Base de conhecimento sem trechos para a versão do documento | "Ausência de evidências" e revisão humana; resultado geral segundo o FR-019 | FR-022, FR-024 | Não |
 | TS-039 | Parecer com recomendação sensível | Parecer entregue na hora; recomendação sensível "pendente de aprovação", sem conteúdo | FR-035a, FR-035b, FR-035c | Opcional |
-| TS-040 | Aprovação de recomendação sensível | Checkpoint gravado; a consulta seguinte por A2A recebe a recomendação | FR-035e, FR-035f, FR-035g | Não |
+| TS-040 | Aprovação de recomendação sensível | Checkpoint gravado; a consulta seguinte pelo canal direto recebe a recomendação | FR-035e, FR-035f, FR-035g | Não |
 | TS-041 | Rejeição com justificativa | Checkpoint gravado; o conteúdo nunca é entregue | FR-035e, FR-035g | Não |
 | TS-042 | *(Adiado — desvio D-05)* Decisão por usuário sem papel de aprovador | ERR-019 | FR-035h | Não |
 | TS-043 | Segunda decisão sobre a mesma recomendação | ERR-020 | FR-035e | Não |
@@ -812,6 +906,9 @@ ele PODE executá-lo. Os XMLs de teste DEVEM ser sintéticos ou anonimizados.
 | TS-062 | NF-e no layout do pacote anterior, com data após o fim da convivência | Erros estruturais do pacote vigente; o pacote anterior não é tentado | FR-010e, FR-010f | Não |
 | TS-063 | Solicitações do mesmo usuário acima do limite de taxa configurado | ERR-024, sem análise, com o tempo para nova tentativa | NFR-004 | Não |
 | TS-064 | Armazenamento de sessões indisponível durante a solicitação | ERR-025 dentro do tempo limite configurado; nenhum parecer parcial | NFR-006 | Não |
+| TS-065 | Solicitação A2A com uma NF-e válida e um documento que não é NF-e | Status `parcial`; a NF-e é analisada; as observações informam o documento não analisado com ERR-009 | FR-043b, FR-043e, FR-043g | Opcional |
+| TS-066 | Solicitação A2A com `versaoContrato` `"2.0"`, campo obrigatório ausente ou `idDocumento` repetido | Status `erro` com ERR-007, sem análise | FR-043a, FR-047 | Opcional |
+| TS-067 | Duas solicitações A2A com o mesmo nome de usuário (com espaços e maiúsculas diferentes) e uma com outro nome | As duas primeiras usam o mesmo identificador e o mesmo contexto do usuário; a terceira não acessa esse contexto; o nome está na sessão e na execução e não aparece nos logs nem no envio à IA | FR-052d, FR-056 | Não |
 
 ## Success Criteria *(mandatory)*
 
@@ -825,8 +922,8 @@ ele PODE executá-lo. Os XMLs de teste DEVEM ser sintéticos ou anonimizados.
   adversariais, 0 respostas apresentam valor financeiro não rastreável à base analisada.
 - **SC-004**: 100% das recomendações geradas no conjunto de avaliação estão rotuladas como
   "Recomendação demonstrativa" e vinculadas a achados.
-- **SC-004a**: 0 recomendações sensíveis têm o conteúdo entregue à SOFIA sem aprovação registrada
-  em checkpoint.
+- **SC-004a**: 0 recomendações sensíveis têm o conteúdo entregue (à SOFIA ou pelo canal direto) sem
+  aprovação registrada em checkpoint.
 - **SC-005**: O integrador conecta o Sofia.Simulator ao agente informando apenas o endereço, e 100% dos cenários marcados como obrigatórios para o simulador são aprovados.
 - **SC-006**: 95% das análises de lotes no limite máximo entregam o parecer em até 2 minutos.
 - **SC-007**: 100% das solicitações acima dos limites são rejeitadas sem processamento parcial.
@@ -874,19 +971,22 @@ ele PODE executá-lo. Os XMLs de teste DEVEM ser sintéticos ou anonimizados.
   direto) se autentica, por credencial de serviço, e informa o identificador do usuário final, sem
   login do usuário. O mecanismo concreto da credencial e o controle de quem pode aprovar
   recomendações sensíveis serão definidos em ADR (DP-10).
-- **Contrato com a SOFIA (DP-27)**: ainda não definido. O contrato A2A desta feature é uma proposta
-  v1 provisória e versionada; mudanças acordadas com a SOFIA afetam o adaptador A2A e o Agent Card,
-  e não o caso de uso de análise, que é o mesmo do canal direto.
+- **Contrato com a SOFIA (DP-27, resolvida na constitution 2.2.0)**: contrato SOFIA v1.0 da INFIS
+  ([sofia-a2a.md](./contracts/sofia-a2a.md)), sobre A2A v0.3.x. Mudanças no contrato afetam o
+  adaptador A2A e o Agent Card, e não o caso de uso de análise, que é o mesmo do canal direto. A
+  SOFIA envia os XMLs já convertidos em texto; o agente não recebe arquivos binários nem anexos
+  por A2A.
 - **Expiração de sessão**: valor inicial de 24 horas de inatividade, configurável; a retenção após a
   expiração segue a política a ser definida (DP-13).
 - **Canal direto**: além de A2A, o agente oferece um canal direto de requisição com o mesmo
   comportamento, previsto na constitution.
 - **SOFIA fora do escopo**: o orquestrador SOFIA é um sistema externo e não é implementado neste
   projeto. Ele apenas acessa o agente pelo contrato público A2A (Agent Card e mensagens). Este
-  projeto entrega o agente, o contrato A2A e o Sofia.Simulator, que é um cliente de teste e não
-  substitui nem reproduz a lógica de orquestração da SOFIA. Requisitos sobre o comportamento da
-  SOFIA (por exemplo, obter o token com a identidade do usuário final ou reenviar o identificador
-  da sessão) são obrigações de integração do lado dela, documentadas no contrato.
+  projeto entrega o agente, a documentação do contrato SOFIA v1.0 aplicada ao agente e o
+  Sofia.Simulator, que é um cliente de teste e não substitui nem reproduz a lógica de orquestração
+  da SOFIA. Requisitos sobre o comportamento da SOFIA (por exemplo, omitir `blocking: false`, usar
+  tempo limite de pelo menos 150 segundos e manter a continuidade da conversa) são obrigações de
+  integração do lado dela, documentadas no contrato.
 - **Idioma**: português do Brasil em todas as interações.
 - **Base de conhecimento**: a ingestão e a administração dos manuais oficiais pertencem a uma
   feature separada (002). Esta feature prepara o ponto de integração MCP para consultar a base, e
@@ -921,8 +1021,9 @@ pertencem ao plano técnico.
 - **Consumo e custos de IA**: PostgreSQL.
 - **Base de conhecimento**: PostgreSQL com PgVector, pertencente à feature 002.
 - **A2A**: comunicação real com o SDK oficial do protocolo A2A, tanto no agente (servidor) quanto no
-  Sofia.Simulator (cliente). A versão do protocolo adotada é a suportada pela versão do SDK fixada
-  no plano técnico (resolve parcialmente a DP-17).
+  Sofia.Simulator (cliente), no perfil v0.3.x exigido pelo contrato SOFIA v1.0, servido pela camada
+  oficial de compatibilidade v0.3 do SDK fixado no plano técnico (resolve a DP-17 nesta feature,
+  exceto a autenticação, que segue a DP-10).
 - **MCP**: o agente atua como cliente MCP por um ponto de integração preparado e desabilitado por
   configuração nesta feature; a conexão real com a Api.RAG chega com a feature 002 (DP-18 continua
   pendente).
@@ -961,10 +1062,11 @@ pertencem ao plano técnico.
 - **SDK oficial do A2A**: a versão do protocolo, os estados de tarefa disponíveis, o endereço de
   descoberta do Agent Card e o suporte a streaming e notificações dependem da versão do SDK. Se o
   SDK estiver em versão de pré-lançamento, mudanças incompatíveis são possíveis, e a versão DEVE ser
-  fixada no plano técnico. Na versão fixada no plano (hosting A2A do Microsoft Agent Framework
-  1.26.0-preview), respostas em segundo plano (tarefas A2A) não são suportadas: toda resposta é uma
-  mensagem final, e os estados intermediários do FR-046 não são observáveis por A2A (desvio D-04 do
-  plano, aprovado por Andressa Firmino em 2026-11-04).
+  fixada no plano técnico. O perfil v0.3 é servido pela camada de compatibilidade `A2A.V0_3Compat`,
+  também em pré-lançamento. O hosting A2A do Microsoft Agent Framework na versão fixada responde só
+  com mensagens e não atende o contrato SOFIA, por isso o servidor usa diretamente o SDK A2A. A Task
+  é devolvida já no estado final, e os estados intermediários não são observáveis por A2A (desvio
+  D-04 do plano, revisado em 2026-11-05 e pendente de nova aprovação).
 - **OpenAI**: a análise por IA depende de serviço externo, com custo por uso, limites de taxa e
   disponibilidade fora do controle do projeto; os dados enviados seguem a política de minimização
   (DP-14).
