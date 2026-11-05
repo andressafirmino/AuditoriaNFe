@@ -673,6 +673,32 @@ testes de arquitetura, health checks, `SemSegredosTests` e a ordem de tarefas do
 - **Alternativas**: não preparar CORS (exigiria mudança de código quando surgir um frontend);
   política global com `AllowAnyOrigin` (rejeitada: libera qualquer site e todas as rotas).
 
+### R-35 — Publicação somente do Agent Card no Vercel (D-08, ADR-0012)
+
+- **Fatos verificados em 2026-11-05** ([guia de contêineres](https://vercel.com/kb/guide/does-vercel-support-docker-deployments),
+  [changelog de 2026-10-27](https://vercel.com/changelog/deploy-a-container-from-a-plain-dockerfile)):
+  - o Container runtime está em beta em todos os planos, roda sobre Vercel Functions e é cobrado
+    por CPU ativa, memória provisionada e invocações;
+  - `Dockerfile.vercel` prevalece sobre a detecção de framework; a imagem é construída pelo Vercel
+    e guardada no Vercel Container Registry;
+  - o tráfego vai para a porta 80; outra porta exige a variável `PORT` no projeto e o servidor
+    escutando nela. A imagem do .NET roda sem root, então a porta 8080 com `PORT=8080` evita
+    depender de permissão para portas abaixo de 1024;
+  - instâncias ociosas são encerradas após 5 minutos em produção e 30 segundos em preview, com
+    `SIGTERM` e 30 segundos para encerrar; memória e arquivos locais não são duráveis;
+  - Secure Compute e IPs estáticos não funcionam com contêineres próprios.
+- **Decisão**: o modo `SomenteAgentCard` atende a esses limites, porque não guarda estado, não
+  depende de banco nem de processo contínuo e inicia sem connection strings. O agente completo
+  continua fora do Vercel (R-26).
+- **Porta**: o `Dockerfile.vercel` inicia com `ASPNETCORE_HTTP_PORTS=${PORT:-8080}`, para que o
+  Kestrel escute na porta indicada pelo Vercel, e o projeto define `PORT=8080`.
+- **Formato do card**: o do contrato SOFIA v1.0 (perfil A2A v0.3, referência
+  `exemplos-a2a-v03.md` da skill do contrato), com `url`, `protocolVersion` e `preferredTransport`.
+  Cards no formato A2A 1.0 de outros agentes da turma (com `supportedInterfaces`) não mudam o
+  contrato; o formato 1.0 continua disponível pelo cabeçalho `A2A-Version: 1.0` a partir da Fase 8.
+- **Alternativas**: JSON estático (rejeitado: não exercita o contêiner .NET e duplica o card);
+  aguardar a DP-25 (rejeitado pela autora: adia o cadastro na SOFIA).
+
 ## 3. Uso documentado das APIs do Microsoft Agent Framework
 
 Fonte principal: documentação oficial do Microsoft Agent Framework em Microsoft Learn (páginas

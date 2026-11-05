@@ -21,7 +21,10 @@ implementação do plano: o canal A2A (US2) e o Sofia.Simulator (US6) ficam por 
 seja P1, porque o núcleo é validado primeiro pelo canal direto. Desde 2026-11-05, as Fases 8 e 9
 seguem o contrato SOFIA v1.0 (DP-27 resolvida na constitution 2.2.0, research R-32, ADR-0011), e a
 Fase 10 foi renumerada de T153–T159 para T158–T165, com o README em T164 e o checklist do PR em
-T165. T166 e T167 (CORS, FR-052e) foram acrescentadas à Fase 2 depois da conclusão dela.
+T165. T166 e T167 (CORS, FR-052e) foram acrescentadas à Fase 2 depois da conclusão dela. A Fase 11
+(T168 a T172, publicação somente do Agent Card no Vercel, D-08) vem depois do Polish para não
+bloquear a execução em ordem; depende só da Fase 2 e da aprovação do D-08 e do ADR-0012, e é
+executada por pedido explícito.
 
 **Ajuste em relação à ordem do plano**: a análise por IA da etapa 7 (agente interno, saída
 `ContratoIaV1`, validação e retentativas) entra na US1, com o `IChatClient` simulado nos testes. Sem
@@ -350,7 +353,7 @@ e comparar os achados do `ResultadoAnaliseSofia` com o parecer do mesmo lote pel
 - [ ] T145 [P] [US2] Criar os DTOs e o validador do contrato em `src/Api.Agente/A2A/Sofia/`: `SolicitacaoAnaliseSofia`, `DocumentoSofia`, `ResultadoAnaliseSofia`, `AchadoSofia`, `AgenteSofia`, `ErroSofia` e `ValidadorSolicitacaoSofia`, com as regras de T140 e os limites de `Limites:*` (contrato §3.2, data-model §18)
 - [ ] T146 [US2] Implementar `src/Api.Agente/A2A/Sofia/MapeadorSolicitacaoSofia.cs` e estender a entrada de `src/AuditoriaNFe.Application/CasosDeUso/ExecutarSolicitacaoAuditoria.cs` com `idDocumento` por arquivo, IDs da SOFIA e `usuarioNome`, tipo `AnaliseComPergunta`, canal `A2A` e sessão nova; antes de criar a execução, aplicar a tabela de repetição do data-model §2 (execução existente, ERR-026, ERR-007 ou nova execução) e encerrar como `Falhou` quando o cancelamento da requisição chegar (FR-043b, FR-043c, FR-043h, FR-043i, FR-052d) (depende de T144, T145)
 - [ ] T147 [US2] Implementar `src/Api.Agente/A2A/Sofia/MapeadorResultadoSofia.cs`: execução e parecer → `ResultadoAnaliseSofia` pela tabela do data-model §18 (depende de T145)
-- [ ] T148 [P] [US2] Implementar `src/Api.Agente/A2A/FabricaAgentCard.cs`, que gera o card de `contracts/sofia-a2a.md` §2 a partir de `A2A:UrlPublica`, `A2A:IdAgente`, limites e versão, com a habilidade `analisar_documentos` e sem `securitySchemes`
+- [ ] T148 [P] [US2] Implementar `src/Api.Agente/A2A/FabricaAgentCard.cs`, que gera o card de `contracts/sofia-a2a.md` §2 a partir de `A2A:UrlPublica`, `A2A:IdAgente`, limites e versão, com a habilidade `analisar_documentos` e sem `securitySchemes`. Se a T169 já tiver criado a fábrica com DTOs próprios, adaptá-la ao caminho decidido em T138 (tipos do SDK ou DTOs próprios), mantendo o mesmo JSON v0.3 e o parâmetro `implantacao` no modo `SomenteAgentCard`
 - [ ] T149 [US2] Implementar `src/Api.Agente/A2A/ManipuladorSofiaA2A.cs` (`IAgentHandler`): lê a única parte de texto, valida, chama o caso de uso e publica pelo `TaskUpdater` (`SubmitAsync`, `StartWorkAsync`, `AddArtifactAsync` com o Artifact `analise-sofia-v1` e `CompleteAsync`); sem IDs válidos, `FailAsync` com "ERR-007: …"; repetição devolvida pelo mesmo mapeador; tags do trace com `execucaoId`, `idExecucao` e `idSolicitacao` e métricas de duração e status por `idAgente` (NFR-014); nome do usuário, pergunta e textos fora dos logs, traces e métricas (research R-11, R-32) (depende de T146, T147)
 - [ ] T150 [US2] Implementar `src/Api.Agente/A2A/RegistroA2A.cs` e ligá-lo em `src/Api.Agente/Program.cs` pelo caminho decidido em T138: `A2AServer` com `ManipuladorSofiaA2A` e `InMemoryTaskStore`, `MapA2AWithV03Compat` em `/a2a/auditoria-nfe` e `MapAgentCardGetWithV03Compat` com `blendedCard = false` em `/.well-known/agent-card.json`, ambos fora do grupo `/api/v1` e sem CORS (FR-052e); mesmo limite de corpo, limitação de taxa e concorrência das rotas de análise; `A2A:UrlPublica`, `A2A:IdAgente` e `A2A:ChamadorPadrao` em `src/Api.Agente/appsettings.json`, no `docker-compose.yml` e no `.env.example` (sem valores secretos); referências A2A no `Api.Agente`; remover de `Directory.Packages.props` `Microsoft.Agents.AI.Hosting.A2A.AspNetCore` e `Microsoft.Agents.AI.A2A` se o caminho do MAF não for adotado, e ajustar a supressão de diagnósticos do `Directory.Build.props` (depende de T148, T149)
 - [ ] T151 [US2] Atualizar `contracts/sofia-a2a.md` e os JSON Schemas no mesmo PR se o SDK fixado usar nomes ou formatos diferentes dos documentados (contrato §2 e §5.1), sem mudar a versão `1.0` do contrato de negócio
@@ -398,7 +401,31 @@ validação do ambiente.
 - [ ] T162 Validar `specs/001-agente-auditoria-nfe/quickstart.md` do zero (`docker compose up`, Swagger, execução, simulador, consulta de consumo em `consumo.vw_consumo_diario`) e corrigir o guia no mesmo PR
 - [ ] T163 [P] Conferir que `contracts/api-agente.openapi.yaml`, `contracts/contrato-ia-v1.schema.json`, `contracts/ferramentas-agente.md`, `contracts/sofia-a2a.md`, os JSON Schemas do contrato SOFIA e `contracts/exemplos/` refletem a implementação (testes de contrato verdes) e passar o Redocly lint no OpenAPI
 - [ ] T164 [P] Criar `README.md` na raiz: objetivo do agente, arquitetura (canal direto e canal A2A sobre o mesmo caso de uso), pré-requisitos, `docker compose up`, testes (`dotnet test` com os filtros de trait), integração com a SOFIA (Agent Card, `message/send`, contrato SOFIA v1.0, exemplos de `contracts/exemplos/`, rede Docker e `A2A__UrlPublica`), simulador e limitações do D-05, com links para o quickstart, o contrato e os ADRs; sem segredos
-- [ ] T165 Preencher na descrição do PR para a `dev` (modelo `.github/pull_request_template.md`) o checklist de conformidade com a constitution e a Definition of Done, citando as limitações do D-05 (execução só local e identificação A2A pelo nome), as pendências do ADR-0005 (prazos de remoção física) e a situação do D-07, e comentar "Aprovado" antes do merge (D-06)
+- [ ] T165 Preencher na descrição do PR para a `dev` (modelo `.github/pull_request_template.md`) o checklist de conformidade com a constitution e a Definition of Done, citando as limitações do D-05 (execução só local e identificação A2A pelo nome), as pendências do ADR-0005 (prazos de remoção física) e a situação do D-07 e do D-08, e comentar "Aprovado" antes do merge (D-06)
+
+---
+
+## Phase 11: Publicação somente do Agent Card no Vercel (D-08)
+
+**Goal**: URL pública no Vercel que devolve o Agent Card do agente (contrato SOFIA v1.0, formato
+v0.3), com o `Api.Agente` no modo `SomenteAgentCard`, sem persistência, IA nem rotas de análise
+(FR-052f; ADR-0012; research R-35).
+
+**Independent Test**: em `Production` com `Hospedagem:Modo = SomenteAgentCard` e sem connection
+strings, o card e `/health/live` respondem e todas as outras rotas respondem 404; no Vercel, o card
+da URL pública traz a `url` do projeto.
+
+**Pré-requisito de aprovação**: D-08 e ADR-0012, aprovados por Andressa Firmino em 2026-11-05
+(plan.md, Complexity Tracking). Depende só da Fase 2.
+
+- [X] T168 [P] Criar `tests/AuditoriaNFe.Tests/Contrato/ModoSomenteAgentCardTests.cs` com `WebApplicationFactory<Program>` em `Production`, sem connection strings nem chave da OpenAI: TS-071 (com `Hospedagem:Modo = SomenteAgentCard`, o host inicia; `GET /.well-known/agent-card.json` → 200 com o card de `contracts/sofia-a2a.md` §2, `url` = `{A2A:UrlPublica}/a2a/auditoria-nfe`, `idAgente` de `A2A:IdAgente` e `implantacao` na extensão; `/health/live` → 200; `/health/ready`, `/swagger`, `/openapi/v1.json`, uma rota `/api/v1` e `POST /a2a/auditoria-nfe` → 404; card sem segredos nem cabeçalhos CORS; com `Hospedagem:Modo = Completo`, a inicialização falha pela guarda); em `Development`, o modo `Completo` continua aceito (FR-052b, FR-052f, FR-045)
+- [X] T169 [P] Implementar `src/Api.Agente/A2A/FabricaAgentCard.cs` e os DTOs do card v0.3 (`src/Api.Agente/A2A/AgentCardV03.cs`), gerando o JSON de `contracts/sofia-a2a.md` §2 a partir de `A2A:UrlPublica`, `A2A:IdAgente`, `Limites:*` e da versão do assembly, com a habilidade `analisar_documentos`, sem `securitySchemes` e com `implantacao` só no modo restrito; criar `A2AOpcoes` (`UrlPublica` como URL absoluta http/https, `IdAgente` obrigatório) com validação na inicialização e as chaves `A2A:*` em `src/Api.Agente/appsettings.json` (antecipa parte da T148 e da configuração da T150)
+- [X] T170 Implementar o modo de hospedagem: `Hospedagem:Modo` (`Completo` padrão, `SomenteAgentCard`) em `src/Api.Agente/appsettings.json`; em `src/Api.Agente/Program.cs`, no modo restrito, registrar só a fábrica do card, as opções necessárias e a verificação de vida e mapear `GET /.well-known/agent-card.json` e `/health/live`, sem MongoDB, PostgreSQL, IA, Swagger, OpenAPI, CORS, limites nem migrações; ajustar `src/Api.Agente/Seguranca/GuardaDesvioD05.cs` para aceitar ambiente diferente de `Development` só nesse modo, com mensagem que cite o D-05 e o D-08 (depende de T169)
+- [X] T171 Criar `Dockerfile.vercel` na raiz (mesmo build multiestágio de `src/Api.Agente/Dockerfile`, usuário não root, `ASPNETCORE_ENVIRONMENT=Production`, `Hospedagem__Modo=SomenteAgentCard`, `ASPNETCORE_HTTP_PORTS=${PORT:-8080}` na inicialização) e `.vercelignore` (`.env`, `.env.*`, `data/`, `**/bin/`, `**/obj/`, `.vs/`, `tests/`, `specs/`, `docs/`, `.cursor/`, `.specify/`); validar com `docker build -f Dockerfile.vercel` e a seção 8.8 do quickstart, passo 1; acrescentar o build dessa imagem ao `.github/workflows/ci.yml` (depende de T170)
+- [ ] T172 Publicar no Vercel conforme a seção 8.8 do quickstart: `vercel.json` com deploy automático só da `main`; projeto vinculado, `PORT=8080` e `A2A__UrlPublica` em preview e produção (sem connection strings nem chaves); preview pelo CLI (`vercel deploy`) com verificação do card, de `/health/live` e das rotas que devem responder 404; depois da PR `dev` → `main`, repositório conectado ao projeto e produção publicada pelo merge na `main`, com a mesma verificação; registrar a URL, o commit e o resultado das verificações em `research.md` R-35 (depende de T171)
+
+**Checkpoint**: TS-071 passa; a URL pública do Vercel devolve o card com a `url` do projeto; nenhuma
+rota além do card e de `/health/live` responde.
 
 ---
 
@@ -421,6 +448,9 @@ validação do ambiente.
   T138 (spike) vem antes de todas as outras tarefas da fase.
 - **US6 (Phase 9)**: depende da US2.
 - **Polish (Phase 10)**: depende das histórias desejadas.
+- **Agent Card no Vercel (Phase 11)**: depende só da Foundational e da aprovação do D-08 e do
+  ADR-0012; não bloqueia nem é bloqueada pelas histórias. A T148 da US2 reaproveita a fábrica da
+  T169.
 
 ### User Story Dependencies
 
@@ -430,6 +460,7 @@ US1 → US4, US3, US5           (podem andar em paralelo)
 US4 + US5 → US7
 US1 + US4 + US5 → US2 → US6   (US2 também exige ADR-0011, D-04 revisado e D-07 aprovados)
 histórias concluídas → Polish
+Foundational → Phase 11       (exige D-08 e ADR-0012 aprovados)
 ```
 
 ### Within Each User Story
@@ -513,7 +544,8 @@ for publicado (ADR-0008).
 - **Dependências marcadas pelo Constitution Check**: identificação, aprovação e exposição dependem
   do D-05 (T020, T036, T038, T042, T130 a T137, T144, T146, T149 e T150); a primeira chamada ao LLM
   com dados de documento segue o ADR-0004 (T082 a T084); o canal A2A segue o contrato SOFIA v1.0 e
-  depende do ADR-0011, da revisão do D-04 e do D-07 (Phase 8 e Phase 9).
+  depende do ADR-0011, da revisão do D-04 e do D-07 (Phase 8 e Phase 9); a publicação do card no
+  Vercel depende do D-08 e do ADR-0012 (Phase 11).
 - **Fontes oficiais**: nenhuma regra, layout, schema ou preço é presumido (P02); NFePHP e ACBr não
   são fontes. Os XMLs de teste e de exemplo são sintéticos.
 - Commits sem segredos, sem `.env` e sem o trailer `Co-authored-by: Cursor`; nada de push direto na

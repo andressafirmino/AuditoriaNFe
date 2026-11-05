@@ -131,6 +131,11 @@ convenção da constitution.
   servidor. A política `SofiaBrowser` fica preparada só para as rotas REST `/api/v1`, ativada apenas
   quando `Cors:AllowedOrigins` tiver as origens de um frontend web autorizado; a lista vazia é o
   padrão.
+- Q: O agente pode ser publicado no Vercel antes do fim do D-05? → A: Só o Agent Card (D-08 e
+  ADR-0012, aprovados em 2026-11-05): o `Api.Agente` sobe no modo `SomenteAgentCard`, que expõe apenas o
+  card e a verificação de vida, sem persistência, IA, documentação nem rotas de análise. O card
+  segue o contrato SOFIA v1.0 (formato v0.3) e informa que a análise não está disponível naquela
+  URL.
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -732,7 +737,14 @@ obtém o Agent Card, envia a solicitação e exibe o resultado com os IDs da sol
   autenticação.
 - **FR-052b**: Enquanto o desvio D-05 vigorar, o agente SOMENTE PODE ser executado em ambiente local
   de testes, com as portas publicadas apenas na interface local da máquina, e o Agent Card DEVE
-  declarar que não há autenticação. Os dados de teste DEVEM ser sintéticos ou anonimizados.
+  declarar que não há autenticação. Os dados de teste DEVEM ser sintéticos ou anonimizados. A única
+  exceção é o modo somente Agent Card (FR-052f).
+- **FR-052f** *(desvio D-08)*: O agente PODE ser publicado fora do ambiente
+  local apenas no modo `SomenteAgentCard`, que expõe só o Agent Card e a verificação de vida e não
+  registra persistência, provedor de IA, documentação da API, rotas `/api/v1` nem o endpoint A2A.
+  Nesse modo, o card DEVE informar, na extensão do contrato, que a análise não está disponível
+  naquela URL, e o agente NÃO DEVE exigir connection strings nem chaves. Fora de `Development`,
+  qualquer outro modo DEVE impedir a inicialização.
 - **FR-052e**: As chamadas da SOFIA ao agente (A2A e REST) são de servidor para servidor e NÃO
   DEVEM depender de CORS. O agente DEVE conceder permissão CORS só a navegadores das origens
   configuradas (`Cors:AllowedOrigins`, esquema + host + porta, sem caminho, barra final ou curinga) e
@@ -946,6 +958,7 @@ ele PODE executá-lo. Os XMLs de teste DEVEM ser sintéticos ou anonimizados.
 | TS-068 | Solicitação A2A repetida com o mesmo `idSolicitacao`: depois de concluída, durante o processamento, depois de falha e com outro `idExecucao` | Concluída: mesmo resultado, sem nova execução nem consumo de IA; em andamento: `erro` com ERR-026; após falha: nova execução; outro `idExecucao`: ERR-007; duas simultâneas: uma execução só | FR-043h | Não |
 | TS-069 | Solicitação A2A com `traceparent` e documento com instruções ao agente no `infCpl` | O trace continua o recebido; logs com os IDs da SOFIA e sem nome, pergunta ou conteúdo; as instruções do documento não são seguidas (como TS-018) | NFR-014, FR-053 | Não |
 | TS-070 | Preflight `OPTIONS` e requisição a `/api/v1` com origem configurada, com origem não configurada, sem `Origin` e com a lista vazia; preflight ao Agent Card e aos health checks; origem inválida na configuração | Origem configurada: `Access-Control-Allow-Origin` igual à origem, métodos e cabeçalhos permitidos, sem `Allow-Credentials`; demais casos: sem permissão CORS; sem `Origin`: resposta normal; configuração inválida: o agente não inicia | FR-052e | Não |
+| TS-071 | Agente em `Production` no modo `SomenteAgentCard`, sem connection strings nem chave; mesmo ambiente no modo `Completo` | Modo restrito: o agente inicia; Agent Card v0.3 com `url` da configuração e `implantacao` na extensão; `/health/live` responde; `/health/ready`, Swagger, OpenAPI, `/api/v1/*` e `POST /a2a/auditoria-nfe` respondem 404. Modo completo: o agente não inicia | FR-052b, FR-052f, FR-045 | Não |
 
 ## Success Criteria *(mandatory)*
 
@@ -1082,7 +1095,7 @@ pertencem ao plano técnico.
   execução apenas local (FR-052b) e dados sintéticos ou anonimizados. O desvio DEVE ser registrado
   na seção "Complexity Tracking" do plano técnico, com responsável e aprovação (constitution 8.3),
   e DEVE ser encerrado antes de qualquer implantação fora da máquina local ou da integração com a
-  SOFIA real.
+  SOFIA real, salvo a publicação somente do Agent Card (FR-052f, desvio D-08).
 
 - **Vercel não é usada nesta feature**: desde 2026-10-27 a Vercel oferece, em beta, um runtime de
   contêiner que implanta um Dockerfile como Vercel Functions, sem disco local durável, com escala
@@ -1090,7 +1103,9 @@ pertencem ao plano técnico.
   JSON locais (FR-035j) não seriam duráveis nem compartilhados entre instâncias, e o MongoDB e o
   PostgreSQL precisariam ser serviços externos. Por isso, nesta feature o agente roda localmente com
   Docker. A implantação continua pendente (DP-25) e só PODE usar a Vercel após ADR e após a troca dos
-  checkpoints por armazenamento durável.
+  checkpoints por armazenamento durável. Exceção: o modo somente Agent Card
+  pode ser publicado no Vercel (FR-052f, desvio D-08, ADR-0012), porque não usa checkpoints,
+  persistência nem processo de longa duração.
 - **Checkpoints em arquivos JSON locais**: servem apenas para demonstração e NÃO DEVEM ser usados em
   produção. Funcionam com uma única instância do agente; não oferecem consistência entre instâncias,
   controle transacional ou criptografia. No contêiner, os arquivos se perdem se não houver volume

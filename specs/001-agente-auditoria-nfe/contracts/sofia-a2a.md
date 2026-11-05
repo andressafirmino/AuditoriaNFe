@@ -23,7 +23,8 @@ Este contrato complementa a [spec](../spec.md) (FR-043 a FR-047, FR-035g, FR-048
 > **Sem autenticação na v1 (desvio D-05).** O agente só pode ser executado em ambiente local de
 > testes, com as portas publicadas em `127.0.0.1` e dados sintéticos ou anonimizados (FR-052b). A
 > autenticação é de transporte (fora dos DTOs) e chega com o ADR da DP-10; a integração com a SOFIA
-> real exige o fim do D-05.
+> real exige o fim do D-05. Exceção (aprovada em 2026-11-05): só o Agent Card pode ser publicado no
+> Vercel, no modo `SomenteAgentCard` (FR-052f, desvio D-08, ADR-0012), sem o endpoint A2A.
 
 ## 1. Endereços
 
@@ -99,6 +100,9 @@ Regras:
   (ADR da DP-10) entra no card em nova versão menor do contrato.
 - Mudança de limite por configuração altera o card sem nova versão do contrato (FR-005).
 - O card não contém segredos, chaves, endereços internos nem dados de usuários (FR-045).
+- No modo `SomenteAgentCard` (FR-052f, D-08), a extensão acrescenta o parâmetro
+  `"implantacao": "somente Agent Card publicado; message/send indisponível nesta URL"`. Os demais
+  campos não mudam. O parâmetro é opcional para a SOFIA e não altera a versão do contrato.
 
 ## 3. Solicitação (SOFIA → agente)
 

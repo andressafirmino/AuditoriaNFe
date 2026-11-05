@@ -294,6 +294,50 @@ Esperado (a partir da T089, quando `POST /api/v1/execucoes` existir): a origem c
 outra origem não recebe o cabeçalho. Agent Card, `/a2a/auditoria-nfe` e `/health/*` nunca recebem
 cabeçalhos CORS. `curl` e o PowerShell não aplicam CORS: o bloqueio só acontece no navegador.
 
+### 8.8 Agent Card publicado no Vercel (D-08, TS-071)
+
+Depois da conclusão da Fase 11 (D-08 e ADR-0012 aprovados em 2026-11-05). O Vercel recebe apenas o
+modo `SomenteAgentCard`: o card e `/health/live`, sem banco, IA nem rotas de análise. Nenhuma
+connection string ou chave é cadastrada no projeto Vercel.
+
+1. Conferir a imagem localmente (porta só em `127.0.0.1`):
+
+   ```powershell
+   docker build -f Dockerfile.vercel -t auditoria-nfe-card:local .
+   docker run --rm -d --name auditoria-nfe-card -p 127.0.0.1:5311:8080 `
+     -e PORT=8080 -e A2A__UrlPublica=http://localhost:5311 auditoria-nfe-card:local
+   Invoke-RestMethod http://localhost:5311/.well-known/agent-card.json | ConvertTo-Json -Depth 10
+   Invoke-WebRequest http://localhost:5311/health/ready -SkipHttpErrorCheck | Select-Object StatusCode
+   docker stop auditoria-nfe-card
+   ```
+
+   Esperado: o card do contrato §2 com `url` = `http://localhost:5311/a2a/auditoria-nfe` e
+   `implantacao` na extensão; `/health/ready` responde 404.
+
+2. Publicar em preview e conferir antes da produção (CLI autenticada na conta da autora):
+
+   ```powershell
+   npm.cmd install -g vercel
+   vercel login
+   vercel link
+   vercel env add PORT production          # valor: 8080 (repetir para preview)
+   vercel env add A2A__UrlPublica production   # valor: https://<projeto>.vercel.app
+   vercel env ls
+   vercel deploy
+   Invoke-RestMethod https://<url-do-preview>/.well-known/agent-card.json | ConvertTo-Json -Depth 10
+   ```
+
+   Esperado: o mesmo card com a URL pública; `/health/live` responde 200; `/swagger`, `/api/v1/...`
+   e `POST /a2a/auditoria-nfe` respondem 404. Em preview, a proteção de deployments do Vercel pode
+   exigir login para abrir a URL.
+
+3. Produção pela `main`: o `vercel.json` só permite deploy automático da `main`. Depois que a PR
+   `dev` → `main` com o `vercel.json` for mesclada, conectar o repositório ao projeto (`vercel git
+   connect` ou Project Settings > Git) e conferir que a Production Branch é `main`. A partir daí, cada
+   merge na `main` publica a produção; para publicar o merge que já aconteceu, use Redeploy no painel
+   ou `vercel deploy --prod` a partir da `main` atualizada. Repita as verificações do passo 2 na URL
+   de produção.
+
 ## 9. Validar a aprovação de recomendações sensíveis (TS-039 a TS-041)
 
 1. Execute pelo canal direto (seção 6) um lote que gere recomendação sensível. Esperado: o parecer
@@ -357,6 +401,9 @@ o P17.
 | API não inicia: "Cors:AllowedOrigins contém uma origem inválida" | Origem com caminho, barra final, curinga ou sem esquema | Usar só esquema + host + porta, por exemplo `http://localhost:4200` |
 | Navegador bloqueia a chamada por CORS | Origem do frontend fora de `Cors__AllowedOrigins__0` ou rota fora de `/api/v1` | Conferir a origem exata exibida no console do navegador; o Agent Card e o A2A não têm CORS |
 | SOFIA em contêiner não alcança o agente | Uso de `localhost` entre contêineres ou redes diferentes | Rede `auditoria-nfe-net` e `http://api-agente:8080` (seção 8.6) |
+| Vercel responde 502 ou o deploy não fica pronto | `PORT` ausente no projeto Vercel; o tráfego vai para a porta 80 | `vercel env add PORT` com `8080` e novo deploy (seção 8.8) |
+| Card no Vercel com `url` de `localhost` | `A2A__UrlPublica` não cadastrada no ambiente do deploy | Cadastrar a URL do projeto em preview e produção e publicar de novo |
+| A SOFIA recebe 404 ao chamar o agente no Vercel | O Vercel só publica o card (D-08); o canal A2A não existe lá | Usar o agente local para `message/send` até a DP-25 e o fim do D-05 |
 
 ## 12. Encerrar
 

@@ -7,7 +7,9 @@
 
 **Revisão de 2026-11-05**: contrato SOFIA v1.0 no canal A2A (DP-27 resolvida na constitution 2.2.0,
 ADR-0011 proposto), servido pelo SDK A2A com a camada `A2A.V0_3Compat`; desvio D-04 revisado e novo
-desvio D-07, ambos pendentes de aprovação; Fases 8 e 9 das tarefas reescritas.
+desvio D-07, ambos pendentes de aprovação; Fases 8 e 9 das tarefas reescritas. Novo desvio D-08
+(publicação somente do Agent Card no Vercel, ADR-0012), aprovado por Andressa Firmino em
+2026-11-05, com a Fase 11 das tarefas.
 
 **Artefatos desta etapa**: [research.md](./research.md), [data-model.md](./data-model.md),
 [contracts/api-agente.openapi.yaml](./contracts/api-agente.openapi.yaml),
@@ -88,8 +90,10 @@ tabela de preços, instruções do agente).
 real sob demanda.
 
 **Target Platform**: contêiner Linux (`mcr.microsoft.com/dotnet/aspnet:10.0.14`, usuário não root);
-ambiente local por Docker Compose, com portas só em `127.0.0.1` (D-05). Implantação fora desta
-feature (DP-25).
+ambiente local por Docker Compose, com portas só em `127.0.0.1` (D-05). Implantação do agente
+completo fora desta feature (DP-25). Exceção: o modo `SomenteAgentCard`
+publicado no Container runtime do Vercel, que expõe só o Agent Card e a verificação de vida (D-08,
+ADR-0012).
 
 **Project Type**: serviço web (API REST + servidor A2A) com cliente de console (Sofia.Simulator).
 
@@ -104,7 +108,7 @@ schemas resolvidos só dentro da pasta do pacote; nenhum valor financeiro não r
 (FR-027/FR-028); metadados pelo sistema (P09); contexto do usuário gravado só pelo sistema (FR-057);
 sem segredos no repositório, nas imagens ou nos logs; respostas e mensagens em pt-BR; uma instância
 do Api.Agente enquanto os checkpoints forem arquivos locais; execução só local enquanto vigorar o
-D-05.
+D-05, salvo o modo `SomenteAgentCard` (D-08).
 
 **Scale/Scope**: uma API (Api.Agente) com 3 projetos de camada, 1 cliente de console e 1 projeto de
 testes; 1 habilidade A2A (`analisar_documentos`); 11 rotas REST de negócio; 19 pacotes de schema;
@@ -158,7 +162,7 @@ resolução); **N/A** (fora desta feature).
 | 3.4 Fluxo de validação            | Nove etapas em ordem, com estado; etapa 3 inclui identificação (FR-007a); etapa 4 inclui seleção do pacote e totalizadores; falha em 1–2 interrompe; 3–6 seguem DP-24 da spec                                           | Conforme                                                                        |
 | 3.5 Repositório                   | GitHub; fluxo `feature → dev → main`; `main` e `dev` protegidas (PR obrigatório, sem push direto nem force push); check `build-test` exigido quando o CI existir (research R-25, ADR-0008)                             | Conforme (check de CI pendente até a primeira tarefa)                           |
 | 3.5 Contêineres                   | Dockerfile multiestágio, não root, sem segredos; compose de um comando com portas próprias                                                                                                                              | Conforme                                                                        |
-| 3.5 Implantação                   | Sem implantação nesta feature; DP-25 pendente; proibida enquanto vigorar o D-05                                                                                                                                         | N/A                                                                             |
+| 3.5 Implantação                   | Sem implantação do agente completo nesta feature; DP-25 pendente; proibida enquanto vigorar o D-05. Exceção: só o Agent Card no Container runtime do Vercel, que não atende a processo de longa duração (ADR-0012)     | **Desvio D-08** (aprovado em 2026-11-05)                                        |
 | 4.1–4.3 Base de conhecimento      | Feature 002; contrato do consumidor preparado                                                                                                                                                                           | N/A                                                                             |
 | 4.4 Contratos do LLM e envelope   | `ContratoIaV1` e envelope v1 versionados; OpenAPI de referência; erros padronizados                                                                                                                                     | Conforme                                                                        |
 | 4.5 Consumo                       | Uma linha por chamada e tentativa; embeddings e cache previstos; NULL quando desconhecido                                                                                                                               | Conforme                                                                        |
@@ -179,7 +183,7 @@ resolução); **N/A** (fora desta feature).
 | ---------------------------------------------------------------------------- | --------------------------------------------------------- |
 | "Nenhum endpoint não público aceita solicitações sem credencial do chamador" | Não atendido na v1 — coberto pelo D-05                    |
 | "O CI está verde, e a revisão foi aprovada por pessoa diferente do autor"    | CI exigido; revisão pela própria autora — coberto pelo D-06 |
-| "Os desvios foram registrados conforme a seção 8.3"                          | D-03 a D-06 aprovados por Andressa Firmino em 2026-11-04; revisão do D-04 e D-07 registrados em 2026-11-05, pendentes de aprovação |
+| "Os desvios foram registrados conforme a seção 8.3"                          | D-03 a D-06 aprovados por Andressa Firmino em 2026-11-04; D-08 aprovado em 2026-11-05; revisão do D-04 e D-07 registrados em 2026-11-05, pendentes de aprovação |
 | Demais itens                                                                 | Atendidos pelo desenho; verificação na implementação      |
 
 
@@ -197,7 +201,7 @@ resolução); **N/A** (fora desta feature).
 | DP-05 Modelo OpenAI                | Resolvida como parâmetro obrigatório escolhido por avaliação                                                                                                                   |
 | DP-06, DP-07, DP-15                | N/A (feature 002)                                                                                                                                                              |
 | DP-08, DP-09, DP-12, DP-21, DP-24  | Resolvidas pela spec e detalhadas no data-model e nos contratos                                                                                                                |
-| DP-10 Autenticação                 | **Adiada pelo desvio D-05**; ADR-0003 registra a ausência temporária e o modelo futuro. Bloqueia qualquer execução fora da máquina local                                       |
+| DP-10 Autenticação                 | **Adiada pelo desvio D-05**; ADR-0003 registra a ausência temporária e o modelo futuro. Bloqueia qualquer execução fora da máquina local, salvo o modo `SomenteAgentCard` (D-08) |
 | DP-11 Ferramentas externas         | Resolvida: nenhuma na v1                                                                                                                                                       |
 | DP-13 Retenção                     | Parcial: sessão (24 h) e contexto do usuário (90 dias) definidos pela spec; demais prazos no ADR-0005                                                                          |
 | DP-14 Minimização                  | Resolvida: ADR-0004 (a primeira chamada ao LLM com dados de documento DEVE seguir a política do ADR)                                                                           |
@@ -208,7 +212,7 @@ resolução); **N/A** (fora desta feature).
 | DP-20 Aprovadores e local dos ADRs | Resolvida na constitution 2.1.0: Andressa Firmino aprova constitution, desvios, ADRs e PRs enquanto for a única mantenedora; ADRs em `docs/adr/`                               |
 | DP-22 Tabela de preços             | Resolvida: arquivo versionado da fonte oficial                                                                                                                                 |
 | DP-23 Observabilidade              | Resolvida: OpenTelemetry (ADR-0009)                                                                                                                                            |
-| DP-25 Implantação                  | Pendente, fora desta feature (Vercel avaliada — research R-26)                                                                                                                 |
+| DP-25 Implantação                  | Pendente para o agente completo, fora desta feature (Vercel avaliada — research R-26). Só o Agent Card no Vercel (ADR-0012 e D-08, aprovados; research R-35)                   |
 | DP-26 CI e proteção                | Resolvida: GitHub Actions, branches `dev` e `main` protegidas (ADR-0008)                                                                                                       |
 | DP-27 Contrato com a SOFIA         | **Resolvida na constitution 2.2.0**: contrato SOFIA v1.0 (research R-32, ADR-0011 proposto); o canal A2A continua no fim das tarefas                                          |
 
@@ -240,7 +244,8 @@ verificado;
 - o nome do usuário recebido da SOFIA fica fora de logs, do envio ao LLM e do contexto do usuário.
 
 O gate continua **aprovado** para as Fases 1 a 7. A Fase 8 depende das aprovações da revisão de
-2026-11-05 (ADR-0011, D-04 revisado e D-07).
+2026-11-05 (ADR-0011, D-04 revisado e D-07). A Fase 11 (publicação somente do Agent Card) foi
+liberada pela aprovação do D-08 e do ADR-0012 em 2026-11-05 e não afeta o gate das demais fases.
 
 ## Project Structure
 
@@ -288,11 +293,14 @@ infra/
 ├── mongodb/init/01-colecoes.js  # Usuário da aplicação, coleções com $jsonSchema, índices, TTL
 └── postgres/init/01-consumo.sql # Usuário da aplicação e schema consumo (tabela por migração EF)
 .github/workflows/ci.yml         # build-test e build da imagem
-docs/adr/                        # ADR-0001 a ADR-0011 (DP-20)
+Dockerfile.vercel                # Imagem do modo SomenteAgentCard para o Vercel (D-08, ADR-0012)
+.vercelignore                    # Impede o envio de .env, data/ e artefatos ao Vercel (D-08)
+vercel.json                      # Deploy automático só da main (D-08)
+docs/adr/                        # ADR-0001 a ADR-0012 (DP-20)
 
 src/
 ├── Api.Agente/                          # Camada de Endpoints (host ASP.NET Core)
-│   ├── Program.cs                       # Composição: OpenAPI, health, A2A, limites, guarda do D-05
+│   ├── Program.cs                       # Composição: OpenAPI, health, A2A, limites, guarda do D-05, modo SomenteAgentCard
 │   ├── Endpoints/                       # Execuções, sessões, recomendações, contexto do usuário (REST v1)
 │   ├── A2A/                             # Registro do servidor A2A, fábrica do Agent Card, ManipuladorSofiaA2A
 │   │   └── Sofia/                       # DTOs do contrato SOFIA v1.0, validador e mapeadores
@@ -499,6 +507,31 @@ serviço (contrato §11, quickstart §8.6).
 - **Exemplos**: mensagens completas em `contracts/exemplos/`, validadas contra os schemas e usadas
 como fixtures dos testes de contrato.
 
+### Publicação somente do Agent Card (D-08, ADR-0012)
+
+- **Modo de hospedagem**: `Hospedagem:Modo` = `Completo` (padrão) ou `SomenteAgentCard`. No modo
+restrito, o host registra só a fábrica do card e a verificação de vida e mapeia
+`GET /.well-known/agent-card.json` e `GET /health/live`. Não registra MongoDB, PostgreSQL, provedor
+de IA, observabilidade com exportação, Swagger, OpenAPI, rotas `/api/v1` nem o endpoint A2A; o
+resto responde 404 (FR-052f, TS-071).
+- **Guarda**: `GuardaDesvioD05` aceita ambiente diferente de `Development` só com
+`Hospedagem:Modo = SomenteAgentCard`; em `Development`, os dois modos valem.
+- **Card**: o mesmo da `FabricaAgentCard` (contrato §2, formato v0.3), antecipada da T148 com DTOs
+próprios; no modo restrito, a extensão do contrato acrescenta `implantacao` informando que só o card
+está publicado e que `message/send` não está disponível naquela URL.
+- **Imagem**: `Dockerfile.vercel` na raiz, com o mesmo build do `Dockerfile`, usuário não root,
+`ASPNETCORE_ENVIRONMENT=Production` e `Hospedagem__Modo=SomenteAgentCard` fixados, e porta lida de
+`PORT` (8080 por padrão). O Vercel encaminha o tráfego para a porta de `PORT` (research R-35).
+- **Projeto Vercel**: variáveis `PORT=8080` e `A2A__UrlPublica` (URL do projeto), sem connection
+string nem chave; `.vercelignore` exclui `.env`, `.env.*`, `data/`, `bin/`, `obj/`, `tests/` e
+`specs/`. Preview verificado antes da produção.
+- **Branch de produção**: a `main` (branch padrão do GitHub). O `vercel.json` desliga o deploy
+automático em todas as branches (`"**": false`) e o mantém só na `main`; a produção sai do merge
+da PR `dev` → `main` (ADR-0008). O preview é publicado pelo CLI (`vercel deploy`, sem `--prod`) a
+partir da branch da feature, antes da PR para a `main`. O repositório só é conectado ao projeto
+Vercel depois que o `vercel.json` estiver na `dev` e na `main`, porque branches sem esse arquivo
+seriam publicadas a cada push.
+
 ### Contexto do usuário (FR-055 a FR-060)
 
 - **Coleção** `contextos_usuario`, um documento por chave de isolamento, com `$jsonSchema` que só
@@ -569,6 +602,7 @@ antes do merge.
 | `Aprovacao:Diretorio`                                                             | `./data/aprovacoes`                                     | FR-035j                        |
 | `A2A:UrlPublica` / `A2A:IdAgente` / `A2A:ChamadorPadrao`                          | `http://localhost:5310` / `agente-auditoria-nfe` / `sofia` | contrato SOFIA, FR-044a, FR-052d |
 | `Seguranca:AutenticacaoHabilitada`                                                | `false` (único valor aceito na v1, só em `Development`) | D-05                           |
+| `Hospedagem:Modo`                                                                 | `Completo` (`SomenteAgentCard` na imagem do Vercel)     | D-08, FR-052f                  |
 | `Cors:AllowedOrigins`                                                             | lista vazia (nenhuma origem de navegador permitida)     | FR-052e                        |
 | `Persistencia:AplicarMigracoes`                                                   | `true` só no ambiente local                             | research R-16                  |
 | `OpenAI:Modelo`                                                                   | sem padrão                                              | DP-05                          |
@@ -582,6 +616,8 @@ Os valores padrão "anonimo" e "nao-informado" são constantes da spec (FR-052c)
 - **Sem autenticação (D-05)**: identificação informada e não verificada; guarda de inicialização que
 recusa subir fora de `Development`; portas só em `127.0.0.1`; Agent Card declarando a ausência de
 autenticação; dados sintéticos. Limitação de taxa por chave de isolamento.
+- **Modo `SomenteAgentCard` (D-08)**: única forma de subir fora de `Development`; expõe só dados
+públicos do card e a verificação de vida, sem segredos no projeto Vercel nem dados de usuário.
 - **CORS**: só a política `SofiaBrowser` nas rotas `/api/v1`, com origens enumeradas e sem
 credenciais de navegador (FR-052e). CORS não é controle de acesso: chamadas sem `Origin` (backend
 da SOFIA, curl) seguem o pipeline normal.
@@ -606,7 +642,7 @@ recebido da SOFIA ou dados pessoais; telemetria do MAF e do SDK A2A sem dados se
 | Aplicação (IChatClient simulado) | TS-015 a TS-020, TS-026 a TS-028, TS-036 a TS-038, TS-047, TS-055, TS-059                                                                                                                                                                                                                                              |
 | Ferramentas                      | Contrato, argumentos inválidos, autorização e timeout de cada ferramenta                                                                                                                                                                                                                                               |
 | Aprovação                        | TS-040, TS-041, TS-043 a TS-045                                                                                                                                                                                                                                                                                        |
-| Contrato                         | TS-029, TS-032, TS-034, TS-066, JSON Schemas do contrato SOFIA (`contracts/exemplos/` e casos inválidos), mapeadores de solicitação e resultado, envelope v1, OpenAPI de referência, schema do contrato do LLM                                                                                                                    |
+| Contrato                         | TS-029, TS-032, TS-034, TS-066, TS-070, TS-071, JSON Schemas do contrato SOFIA (`contracts/exemplos/` e casos inválidos), mapeadores de solicitação e resultado, envelope v1, OpenAPI de referência, schema do contrato do LLM                                                                                                                    |
 | Integração (Testcontainers)      | TS-002, TS-003, TS-006 a TS-012, TS-021 a TS-025, TS-030, TS-033 (limitado por D-04), TS-035, TS-035a, TS-054, TS-056, TS-058, TS-063 a TS-065, TS-067 a TS-069; rastreabilidade a partir do `execucaoId` (NFR-008, P16)                                                                                                         |
 | Arquitetura                      | Domínio sem pacotes externos; Aplicação sem OpenAI, MCP, A2A, MongoDB ou Npgsql; `SemSegredos`                                                                                                                                                                                                                         |
 | Avaliação                        | Com OpenAI real, sob demanda (P17). Perguntas e recomendações: SC-003, SC-004, SC-008. Análise por IA (lotes sintéticos com divergências conhecidas por grupo de regra): 0 indícios sem evidência verificável, 0 indícios que contradizem ou repetem como novo um achado determinístico e 0 valores não rastreáveis no resumo |
@@ -633,7 +669,7 @@ SDK A2A com a camada v0.3 (research R-11).
 ### ADRs
 
 Registrados em `docs/adr/`. ADR-0001 a ADR-0010 aprovados por Andressa Firmino em 2026-11-04
-(DP-20); ADR-0011 proposto em 2026-11-05.
+(DP-20); ADR-0011 proposto e ADR-0012 aprovado em 2026-11-05.
 
 
 | ADR      | Tema                                                                                           | Situação |
@@ -649,6 +685,7 @@ Registrados em `docs/adr/`. ADR-0001 a ADR-0010 aprovados por Andressa Firmino e
 | ADR-0009 | Observabilidade com OpenTelemetry (DP-23)                                                      | Aprovado |
 | ADR-0010 | Schemas XSD oficiais versionados no repositório e seleção pela data de referência (DP-03)      | Aprovado |
 | ADR-0011 | Contrato SOFIA v1.0 sobre A2A v0.3 (DP-27, DP-17, D-04 revisado, D-07); substitui o ADR-0007 quando aprovado | Proposto |
+| ADR-0012 | Publicação somente do Agent Card no Vercel (D-08); não resolve a DP-25 para o agente completo  | Aprovado |
 
 
 Os antigos ADR-0001 (MAF no lugar do Semantic Kernel) e ADR-0002 (MAF na Aplicação) deixaram de ser
@@ -660,6 +697,8 @@ que siga a política de minimização e mascaramento do ADR.
 
 - **Sem autenticação (D-05)**: qualquer processo com acesso à porta pode enviar solicitações, se
 passar por outro usuário e aprovar recomendações sensíveis. Execução só local até o fim do desvio.
+- **Card público sem o canal A2A (D-08)**: o card no Vercel anuncia um endpoint que ainda não
+responde naquela URL (404); o Container runtime do Vercel está em beta.
 - **Checkpoints JSON locais**: apenas demonstração; uma instância; sem transação nem criptografia;
 exigem volume persistente no contêiner (FR-035j).
 - **A2A em pré-lançamento**: SDK A2A e camada `A2A.V0_3Compat` em preview; versões fixadas e testes
@@ -685,7 +724,8 @@ até a feature 002.
 > arquiteto do projeto. **Aprovado por Andressa Firmino, 2026-11-04** (D-03, D-04, D-05 e D-06,
 > conforme DP-20). Os desvios D-01 e D-02 da versão anterior deste plano foram encerrados pela
 > constitution 2.0.0. **Revisão de 2026-11-05**: a nova redação do D-04 e o D-07 estão pendentes de
-> aprovação; enquanto isso, vale a aprovação original do D-04 apenas para o desenho anterior.
+> aprovação; enquanto isso, vale a aprovação original do D-04 apenas para o desenho anterior. O D-08
+> (publicação somente do Agent Card no Vercel) foi **aprovado por Andressa Firmino, 2026-11-05**.
 
 
 | Violation                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           | Why Needed                                                                                                                                     | Simpler Alternative Rejected Because                                                                                                                                                                                                              |
@@ -695,5 +735,6 @@ até a feature 002.
 | **D-05** — Constitution 5.2 (autenticação do chamador), P18 (autenticação igual nos canais) e Definition of Done ("nenhum endpoint não público sem credencial"); spec FR-052, FR-035h, ERR-004, ERR-019, TS-031 e TS-042 adiados. **Impacto**: identificação do usuário e do chamador informada sem verificação; isolamento de sessões e do contexto do usuário depende da boa-fé do chamador; aprovador não verificado. **Riscos**: personificação de usuário, leitura do contexto de outro usuário por quem souber o identificador, aprovação indevida de recomendações sensíveis. **Mitigação**: execução só em `Development` (guarda de inicialização), portas em `127.0.0.1`, dados sintéticos ou anonimizados, card declarando ausência de autenticação, aprovador marcado como não verificado. **Responsável**: solicitante da feature. **Aprovação**: Aprovado por Andressa Firmino, 2026-11-04. **Prazo de revisão**: encerrar antes de qualquer implantação fora da máquina local ou da integração com a SOFIA real; reavaliar no planejamento da feature 002 | A versão 1 serve para testar a validação dos XMLs; o solicitante decidiu adiar a autenticação para implementação futura                        | Implementar a credencial de serviço já na v1 exigiria decidir a DP-10 (mecanismo, rotação, multi-tenant) antes de validar o núcleo; JWT de desenvolvimento sem ADR seria uma autenticação provisória com a mesma ausência de garantia em produção |
 | **D-06** — Constitution 5.3 ("todo PR DEVE passar por revisão de ao menos uma pessoa diferente do autor") e Definition of Done ("revisão aprovada por pessoa diferente do autor"). **Impacto**: PRs revisados e aprovados pela própria autora; proteção da `main` e da `dev` com zero aprovações obrigatórias, porque o GitHub não permite que o autor aprove o próprio PR. **Riscos**: erros e desvios da constitution sem segundo olhar. **Mitigação**: PR obrigatório, check `build-test` obrigatório, sem push direto nem force push, checklist de conformidade com a constitution na descrição do PR, preenchido e comentado como "Aprovado" antes do merge. **Responsável**: Andressa Firmino. **Aprovação**: Aprovado por Andressa Firmino, 2026-11-04. **Prazo de revisão**: encerrar quando outra pessoa entrar como mantenedora (junto com a reabertura da DP-20) | O projeto tem uma única mantenedora (DP-20) | Exigir uma aprovação na proteção da `main` e da `dev` impediria qualquer merge, pois o GitHub bloqueia a autoaprovação; contornar com bypass de administrador anularia a proteção para todos os PRs |
 | **D-07** (registrado em 2026-11-05) — Constitution 3.1 ("o agente DEVE ser construído com o Microsoft Agent Framework, incluindo [...] a hospedagem A2A"). **Impacto**: o canal A2A usa o `A2AServer` do SDK oficial A2A com o manipulador `ManipuladorSofiaA2A` e a camada `A2A.V0_3Compat`, em vez do `AddA2AServer` do MAF; o agente interno, as ferramentas, os context providers, o middleware e o workflow continuam no MAF. **Riscos**: menos integração com a telemetria e as atualizações do hosting do MAF. **Mitigação**: a camada A2A fica isolada no `Api.Agente/A2A`; testes de contrato do card, da Message e da Task; o spike da Fase 8 verifica se o `AddA2AServer` do MAF aceita o `IAgentHandler` próprio e pode ser mapeado com `MapA2AWithV03Compat`, e nesse caso o desvio é encerrado. **Responsável**: arquiteto do projeto. **Aprovação**: pendente (Andressa Firmino). **Prazo de revisão**: no spike da Fase 8 e a cada nova versão do hosting A2A do MAF | O contrato SOFIA v1.0 exige Task com Artifact no perfil v0.3; o hosting A2A do MAF na versão fixada (`DisallowBackground`) só devolve Message | Manter o hosting do MAF não atende o contrato; implementar JSON-RPC à mão contraria o FR-043; trocar o MAF por outro framework de agentes não resolve a hospedagem A2A e exigiria ADR pela seção 3.1 |
+| **D-08** (registrado em 2026-11-05) — Constitution 3.5 ("o ambiente de implantação DEVE suportar [...] processos de longa duração para os servidores MCP e A2A") e nota da DP-25 (Vercel só para frontend); plano ("implantação proibida enquanto vigorar o D-05") e prazo do D-05 ("encerrar antes de qualquer implantação fora da máquina local"); spec FR-052b. **Escopo**: só o modo `SomenteAgentCard` do `Api.Agente` no Container runtime do Vercel (ADR-0012), com `GET /.well-known/agent-card.json` e `GET /health/live`; sem MongoDB, PostgreSQL, IA, Swagger, `/api/v1` nem endpoint A2A. **Impacto**: card público na internet anunciando um endpoint A2A que não responde naquela URL (404). **Riscos**: exposição dos metadados do card (sem segredos nem dados de usuário); erro de configuração subir o modo completo fora do ambiente local; mudança de comportamento ou preço do runtime em beta. **Mitigação**: guarda de inicialização que só aceita ambiente diferente de `Development` no modo restrito; modo e ambiente fixados no `Dockerfile.vercel`; testes provando que nenhuma outra rota responde (TS-071); nenhuma connection string ou chave no projeto Vercel; `.vercelignore`; parâmetro `implantacao` no card; preview verificado antes da produção. **Responsável**: Andressa Firmino. **Aprovação**: Aprovado por Andressa Firmino, 2026-11-05. **Prazo de revisão**: encerrar no ADR da DP-25 para o agente completo ou no fim do D-05, o que vier primeiro; reavaliar ao concluir a Fase 8 | Cadastrar o agente no registry da SOFIA e validar a descoberta por uma URL pública antes de o canal A2A existir | JSON estático no Vercel não exercita o contêiner .NET e duplica o card fora do código; esperar a Fase 8, a DP-25 e o fim do D-05 adia a descoberta pela SOFIA; o agente completo no Vercel não tem processo de longa duração, armazenamento local durável nem instância única, e exporia rotas sem autenticação |
 
 
