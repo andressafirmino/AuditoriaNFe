@@ -1,5 +1,6 @@
 using Api.Agente.Documentacao;
 using Api.Agente.Erros;
+using Api.Agente.Hospedagem;
 using Api.Agente.Limites;
 using Api.Agente.Observabilidade;
 using Api.Agente.Seguranca;
@@ -13,6 +14,15 @@ using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 var builder = WebApplication.CreateBuilder(args);
 
 GuardaDesvioD05.Verificar(builder.Environment, builder.Configuration);
+
+if (HospedagemOpcoes.LerModo(builder.Configuration) == ModoHospedagem.SomenteAgentCard)
+{
+    builder.Services.AdicionarSomenteAgentCard(builder.Configuration);
+    var appCard = builder.Build();
+    appCard.MapearSomenteAgentCard();
+    await appCard.RunAsync();
+    return;
+}
 
 builder.Services
     .AdicionarOpcoesAuditoria(builder.Configuration)

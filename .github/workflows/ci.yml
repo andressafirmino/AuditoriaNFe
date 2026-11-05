@@ -56,3 +56,6 @@ jobs:
 
       - name: Build da imagem do Api.Agente
         run: docker build --file src/Api.Agente/Dockerfile --tag auditoria-nfe-api-agente:ci .
+
+      - name: Build da imagem do Agent Card para o Vercel (D-08)
+        run: docker build --file Dockerfile.vercel --tag auditoria-nfe-agent-card:ci .
