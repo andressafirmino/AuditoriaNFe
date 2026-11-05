@@ -42,7 +42,8 @@ public sealed class DependenciasCamadasTests
     {
         var referencias = Repositorio.Projeto(projeto)
             .Descendants("ProjectReference")
-            .Select(r => Path.GetFileNameWithoutExtension((string?)r.Attribute("Include") ?? string.Empty))
+            .Select(r => ((string?)r.Attribute("Include") ?? string.Empty).Replace('\\', '/'))
+            .Select(Path.GetFileNameWithoutExtension)
             .Order(StringComparer.Ordinal);
 
         Assert.Equal(esperadas.Order(StringComparer.Ordinal), referencias);
