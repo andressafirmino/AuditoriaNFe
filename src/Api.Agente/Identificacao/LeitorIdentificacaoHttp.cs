@@ -1,4 +1,5 @@
 using System.Diagnostics.CodeAnalysis;
+using Api.Agente.Erros;
 using AuditoriaNFe.Application.Contratos;
 using AuditoriaNFe.Domain.Identificacao;
 using Microsoft.Extensions.Primitives;
@@ -48,10 +49,7 @@ public sealed class FiltroIdentificacao : IEndpointFilter
     {
         if (!LeitorIdentificacaoHttp.TentarLer(context.HttpContext.Request, out var identificacao))
         {
-            return Results.Json(
-                new ErroRespostaV1(null, new ErroV1(CodigoErro.MensagemForaDoContrato, MensagensErro.Para(CodigoErro.MensagemForaDoContrato))),
-                OpcoesJsonContrato.Padrao,
-                statusCode: StatusCodes.Status400BadRequest);
+            return MapeamentoErrosHttp.Erro(CodigoErro.MensagemForaDoContrato);
         }
 
         LeitorIdentificacaoHttp.Guardar(context.HttpContext, identificacao);
