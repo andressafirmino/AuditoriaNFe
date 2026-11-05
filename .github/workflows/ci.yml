@@ -22,7 +22,9 @@ env:
 jobs:
   build-test:
     name: build-test
-    runs-on: ubuntu-latest
+    # Não usar ubuntu-latest (26.04): o mongo:8.0.x encerra na inicialização no kernel 7.0.0-x do
+    # Ubuntu 26.04 (SERVER-125742, SERVER-136848). Reavaliar quando o MongoDB corrigir a verificação.
+    runs-on: ubuntu-24.04
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v7
