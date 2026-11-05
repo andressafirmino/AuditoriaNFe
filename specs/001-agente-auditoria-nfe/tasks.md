@@ -62,7 +62,7 @@ ficam na US3; recomendações, na US5.
 - [X] T014 [P] Criar `tests/AuditoriaNFe.Tests/Arquitetura/SemSegredosTests.cs`, que falha ao encontrar padrões de chave de API ou senha no repositório (research R-25)
 - [X] T015 Criar `.github/workflows/ci.yml` com o job `build-test` (restore, build com avisos como erro, testes com Docker para Testcontainers, sem chave da OpenAI, excluindo `Categoria=Avaliacao`) e o job de build da imagem, disparados em PR para `dev` e `main` (ADR-0008)
 - [X] T016 [P] Criar `.github/pull_request_template.md` com o checklist de conformidade com a constitution (princípios afetados, desvios D-03 a D-06, testes, ausência de segredos) e a instrução de comentar "Aprovado" antes do merge (desvio D-06)
-- [ ] T017 Depois da primeira execução verde do CI, exigir o check `build-test` na proteção das branches `dev` e `main` por `gh api repos/andressafirmino/AuditoriaNFe/branches/{dev,main}/protection`, mantendo zero aprovações, `enforce_admins` e o bloqueio de force push (ADR-0008)
+- [X] T017 Depois da primeira execução verde do CI, exigir o check `build-test` na proteção das branches `dev` e `main` por `gh api repos/andressafirmino/AuditoriaNFe/branches/{dev,main}/protection`, mantendo zero aprovações, `enforce_admins` e o bloqueio de force push (ADR-0008)
 
 **Checkpoint**: `dotnet build` e `dotnet test` passam com a solução vazia; `docker compose up` sobe os bancos.
 
