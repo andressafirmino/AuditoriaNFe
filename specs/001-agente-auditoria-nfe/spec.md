@@ -99,6 +99,11 @@ convenção da constitution.
   do pacote anterior, validar também contra o anterior. Se o anterior não apresentar erros, o
   documento é considerado válido no layout, e o parecer informa o pacote aplicado e que a data
   estava em convivência.
+- Q: Como tratar o limite de taxa e a indisponibilidade do armazenamento de sessões, que não tinham
+  código de erro? → A: Com dois códigos novos: ERR-024 (limite de taxa ou de análises simultâneas,
+  com o tempo para nova tentativa) e ERR-025 (armazenamento de sessões e execuções indisponível,
+  sem análise parcial). Aprovado por Andressa Firmino, 2026-11-04, na análise de consistência das
+  tarefas.
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -693,6 +698,8 @@ parecer; erros por arquivo são registrados no parecer, e os demais arquivos seg
 | ERR-021 | Rejeição sem justificativa | Recusar a operação, informando que a justificativa é obrigatória | Solicitação |
 | ERR-022 | Falha ao gravar ou ler o checkpoint de aprovação | Não liberar a recomendação; manter "pendente de aprovação" e registrar falha técnica | Solicitação |
 | ERR-023 | Nenhum pacote de schema cobre a data de referência do documento | Validação de layout "não realizada — schema não disponível para a data"; conteúdo "não realizada"; resultado nunca "Sem inconsistências" | Arquivo |
+| ERR-024 | Limite de taxa ou de análises simultâneas atingido | Rejeitar sem executar análise, informando em quanto tempo tentar de novo | Solicitação |
+| ERR-025 | Armazenamento de sessões e execuções indisponível | Rejeitar sem análise parcial, como falha técnica ou dependência indisponível; nenhum resultado é apresentado como completo | Solicitação |
 
 ### Key Entities
 
@@ -803,6 +810,8 @@ ele PODE executá-lo. Os XMLs de teste DEVEM ser sintéticos ou anonimizados.
 | TS-060 | NF-e no layout do pacote anterior, com data de referência dentro da convivência | Válida no layout; pacote aplicado é o anterior; parecer indica convivência | FR-010f | Não |
 | TS-061 | NF-e com erro estrutural nos dois pacotes, data dentro da convivência | Erros do pacote vigente na data; parecer indica convivência e os dois pacotes usados | FR-010f | Não |
 | TS-062 | NF-e no layout do pacote anterior, com data após o fim da convivência | Erros estruturais do pacote vigente; o pacote anterior não é tentado | FR-010e, FR-010f | Não |
+| TS-063 | Solicitações do mesmo usuário acima do limite de taxa configurado | ERR-024, sem análise, com o tempo para nova tentativa | NFR-004 | Não |
+| TS-064 | Armazenamento de sessões indisponível durante a solicitação | ERR-025 dentro do tempo limite configurado; nenhum parecer parcial | NFR-006 | Não |
 
 ## Success Criteria *(mandatory)*
 

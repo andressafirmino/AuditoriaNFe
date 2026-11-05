@@ -10,6 +10,7 @@
 [contracts/sofia-a2a.md](./contracts/sofia-a2a.md),
 [contracts/contrato-ia-v1.schema.json](./contracts/contrato-ia-v1.schema.json),
 [contracts/consulta-manuais-mcp.md](./contracts/consulta-manuais-mcp.md),
+[contracts/ferramentas-agente.md](./contracts/ferramentas-agente.md),
 [quickstart.md](./quickstart.md). Anexos da spec usados pelo plano:
 [vigencia-pacotes-schema.md](./vigencia-pacotes-schema.md) e
 [catalogo-regras-totalizadores.md](./catalogo-regras-totalizadores.md).
@@ -98,7 +99,7 @@ D-05.
 
 **Scale/Scope**: uma API (Api.Agente) com 3 projetos de camada, 1 cliente de console e 1 projeto de
 testes; 3 habilidades A2A; 11 rotas REST de negócio; 19 pacotes de schema; cerca de 80 regras de
-totalizador (com versões); mais de 70 requisitos funcionais e 62 cenários de teste na spec.
+totalizador (com versões); mais de 70 requisitos funcionais e 64 cenários de teste na spec.
 
 ## Constitution Check
 
@@ -151,7 +152,7 @@ resolução); **N/A** (fora desta feature).
 | 4.1–4.3 Base de conhecimento      | Feature 002; contrato do consumidor preparado                                                                                                                                                                           | N/A                                                                             |
 | 4.4 Contratos do LLM e envelope   | `ContratoIaV1` e envelope v1 versionados; OpenAPI de referência; erros padronizados                                                                                                                                     | Conforme                                                                        |
 | 4.5 Consumo                       | Uma linha por chamada e tentativa; embeddings e cache previstos; NULL quando desconhecido                                                                                                                               | Conforme                                                                        |
-| 4.6 Contrato de ferramentas       | Nome, contrato, validação, autorização pelo sistema, timeout, registro e testes por ferramenta                                                                                                                          | Conforme                                                                        |
+| 4.6 Contrato de ferramentas       | Nome, contrato, validação, autorização pelo sistema, timeout, registro e testes por ferramenta, documentados e versionados em `contracts/ferramentas-agente.md`                                                         | Conforme                                                                        |
 | 4.7 Memória e contexto do usuário | Histórico, contexto e conhecimento separados; contexto só com os itens do FR-055a e origem; gravado pelo sistema; enviado como dado não confiável; consulta, correção e exclusão pelo canal direto; retenção de 90 dias | Conforme                                                                        |
 | 5.1 Proteção de dados             | Classificação de campos no data-model; XML descartado; CPF nunca no contexto; minimização e mascaramento ao LLM pelo ADR-0004 (DP-14)                                                                                   | Conforme                                                                        |
 | 5.2 Segurança de entrada          | XML seguro; limites antes do processamento; limitação de taxa e concorrência; Swagger só em `Development`. **Sem autenticação do chamador**                                                                             | **Desvio D-05**                                                                 |
@@ -245,6 +246,7 @@ specs/001-agente-auditoria-nfe/
 │   ├── api-agente.openapi.yaml           # Canal direto (REST v1) e envelope v1
 │   ├── sofia-a2a.md                      # Contrato A2A — proposta v1 provisória (DP-27)
 │   ├── contrato-ia-v1.schema.json        # JSON Schema da saída estruturada do LLM
+│   ├── ferramentas-agente.md             # Contrato v1 das ferramentas do agente interno (constitution 4.6)
 │   └── consulta-manuais-mcp.md           # Contrato do lado consumidor para a Api.RAG (feature 002)
 ├── checklists/
 │   └── requirements.md                   # Checklist de qualidade da spec
@@ -410,7 +412,8 @@ mesmo PR, com os testes de período (TS-050, SC-011).
 Contrato completo em [contracts/api-agente.openapi.yaml](./contracts/api-agente.openapi.yaml). Sem
 autenticação na v1 (D-05): todas as rotas aceitam os cabeçalhos opcionais `X-Usuario-Id` e
 `X-Chamador-Id`. Erros usam o envelope ou o objeto `erro` (constitution 4.4); o mapeamento HTTP é:
-ERR-001/003/007/021 → 400, ERR-002 → 413, ERR-005 → 404, ERR-006 → 410, ERR-020 → 409, ERR-022 → 503.
+ERR-001/003/007/021 → 400, ERR-002 → 413, ERR-005 → 404, ERR-006 → 410, ERR-020 → 409,
+ERR-022/025 → 503, ERR-024 → 429 com `Retry-After`.
 
 
 | Método e rota                                                                              | Finalidade                                                      | Requisitos       |
@@ -486,6 +489,8 @@ antes do merge.
 | `Ia:TimeoutChamada`                                                               | 30 s*                                                   | constitution 5.4               |
 | `Ferramentas:Timeout`                                                             | 5 s*                                                    | seção 4.6                      |
 | `Concorrencia:MaxExecucoes`                                                       | 10                                                      | NFR-004                        |
+| `LimiteTaxa:PermissoesPorJanela` / `LimiteTaxa:Janela`                            | 30* / 1 min* (janela fixa por chave de isolamento)      | constitution 5.2, ERR-024      |
+| `Persistencia:TimeoutMongo` / `Persistencia:TimeoutPostgres`                      | 5 s* / 5 s*                                             | constitution 5.4, ERR-025      |
 | `Xml:ProfundidadeMaxima` / `Xml:MaxCaracteres`                                    | 64* / derivado do limite                                | constitution 5.2               |
 | `Schemas:Diretorio`                                                               | `Schemas/NFe`                                           | research R-14                  |
 | `Catalogos:Regras` / `Catalogos:Extracao` / `Catalogos:Precos`                    | arquivos v1                                             | research R-15, R-16            |
@@ -528,9 +533,9 @@ telemetria do MAF sem dados sensíveis.
 | Ferramentas                      | Contrato, argumentos inválidos, autorização e timeout de cada ferramenta                                                                                                                                                                                                                                               |
 | Aprovação                        | TS-040, TS-041, TS-043 a TS-045                                                                                                                                                                                                                                                                                        |
 | Contrato                         | TS-029, TS-032, TS-034, envelope v1, OpenAPI de referência, schema do contrato do LLM                                                                                                                                                                                                                                  |
-| Integração (Testcontainers)      | TS-002, TS-003, TS-006 a TS-012, TS-021 a TS-025, TS-030, TS-033 (limitado por D-04), TS-035, TS-035a, TS-054, TS-056, TS-058                                                                                                                                                                                          |
+| Integração (Testcontainers)      | TS-002, TS-003, TS-006 a TS-012, TS-021 a TS-025, TS-030, TS-033 (limitado por D-04), TS-035, TS-035a, TS-054, TS-056, TS-058, TS-063, TS-064; rastreabilidade a partir do `execucaoId` (NFR-008, P16)                                                                                                                  |
 | Arquitetura                      | Domínio sem pacotes externos; Aplicação sem OpenAI, MCP, A2A, MongoDB ou Npgsql; `SemSegredos`                                                                                                                                                                                                                         |
-| Avaliação                        | SC-003, SC-004, SC-008 (com OpenAI real, sob demanda)                                                                                                                                                                                                                                                                  |
+| Avaliação                        | Com OpenAI real, sob demanda (P17). Perguntas e recomendações: SC-003, SC-004, SC-008. Análise por IA (lotes sintéticos com divergências conhecidas por grupo de regra): 0 indícios sem evidência verificável, 0 indícios que contradizem ou repetem como novo um achado determinístico e 0 valores não rastreáveis no resumo |
 | Adiados pelo D-05                | TS-031, TS-042                                                                                                                                                                                                                                                                                                         |
 
 

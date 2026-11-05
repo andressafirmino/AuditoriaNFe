@@ -324,6 +324,8 @@ envelope traz `recomendacoes`:
 | ERR-007 (estrutura A2A inválida) | Erro de protocolo do SDK A2A (HTTP 400 no HTTP+JSON; erro JSON-RPC no JSON-RPC) | — |
 | ERR-007 (violação deste contrato: parte `url` ou `data`, metadado inválido, mais de uma parte de texto) | Mensagem do agente com envelope `estado = Rejeitada` e `erro` | Rejeitada |
 | ERR-001, ERR-002, ERR-003, ERR-005, ERR-006 | Mensagem do agente com envelope `estado = Rejeitada` e `erro` | Rejeitada |
+| ERR-024 (limite de taxa ou de análises simultâneas) | Mensagem do agente com envelope `estado = Rejeitada` e `erro.detalhes.tentarNovamenteEmSegundos` | Rejeitada |
+| ERR-025 (armazenamento de sessões indisponível) | Mensagem do agente com envelope `estado = Rejeitada` e `erro`; nenhum parecer parcial | Rejeitada |
 | ERR-008 a ERR-012, ERR-023 | No parecer, por arquivo; os demais arquivos seguem | Concluida |
 | ERR-013, ERR-014, ERR-015 | Parecer com resultados determinísticos, resultado "Inconclusiva" e achado de falha técnica | Concluida |
 | ERR-016 | Envelope com etapas concluídas e não executadas | Falhou |
