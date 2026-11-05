@@ -23,6 +23,8 @@ services:
       OpenAI__Modelo: ${OpenAI__Modelo:-}
       Mcp__Habilitado: ${Mcp__Habilitado:-false}
       A2A__UrlPublica: ${A2A__UrlPublica:-http://localhost:5310}
+      # CORS só para navegador nas rotas /api/v1 (FR-052e); vazio = nenhuma origem permitida.
+      Cors__AllowedOrigins__0: ${Cors__AllowedOrigins__0:-}
       Limites__TamanhoTotalBytes: ${Limites__TamanhoTotalBytes:-5242880}
       Limites__QuantidadeArquivos: ${Limites__QuantidadeArquivos:-20}
       ContextoUsuario__RetencaoInatividade: ${ContextoUsuario__RetencaoInatividade:-90.00:00:00}
