@@ -75,6 +75,7 @@ public sealed partial class SemSegredosTests
     [InlineData("mongodb://${MONGO_APP_USERNAME:?x}:${MONGO_APP_PASSWORD:?x}@mongodb:27017/auditoria_agente")]
     [InlineData("$\"mongodb://{_usuarioApp}:{_senhaApp}@{host}:{porta}/auditoria_agente\"")]
     [InlineData("$\"Host={host};Username={_usuarioApp};Password={_senhaApp}\"")]
+    [InlineData("                token => contexto.Banco.RunCommandAsync(comando, cancellationToken: token),")]
     public void Regras_aceitam_modelos_sem_valor(string linha)
     {
         Assert.DoesNotContain(Regras, regra => regra.Padrao.IsMatch(linha));
@@ -121,6 +122,6 @@ public sealed partial class SemSegredosTests
     [GeneratedRegex(@"mongodb(\+srv)?://[^:/\s@${]+:[^@\s${]+@", RegexOptions.IgnoreCase)]
     private static partial Regex CredencialEmUrlMongo();
 
-    [GeneratedRegex(@"^\s*(?:[\w.-]*[_.-])?(PASSWORD|SENHA|API_?KEY|SECRET|TOKEN)(?:[_.-][\w.-]*)?\s*[:=][ \t]*(?!\$)[^\s#]", RegexOptions.IgnoreCase)]
+    [GeneratedRegex(@"^\s*(?:[\w.-]*[_.-])?(PASSWORD|SENHA|API_?KEY|SECRET|TOKEN)(?:[_.-][\w.-]*)?\s*(?::|=(?!>))[ \t]*(?!\$)[^\s#]", RegexOptions.IgnoreCase)]
     private static partial Regex SegredoAtribuido();
 }

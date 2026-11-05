@@ -33,6 +33,7 @@
   <ItemGroup Label="Opções e configuração">
     <PackageVersion Include="Microsoft.Extensions.Options.ConfigurationExtensions" Version="10.0.14" />
     <PackageVersion Include="Microsoft.Extensions.Options.DataAnnotations" Version="10.0.14" />
+    <PackageVersion Include="Microsoft.Extensions.Diagnostics.HealthChecks.Abstractions" Version="10.0.14" />
   </ItemGroup>
 
   <ItemGroup Label="Host">

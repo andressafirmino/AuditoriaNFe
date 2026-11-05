@@ -100,7 +100,7 @@ do host, guarda do D-05 e infraestrutura de testes.
 - [X] T032 Implementar `src/AuditoriaNFe.Infrastructure/Ia/RegistroConsumoChatClient.cs` (`DelegatingChatClient`): uma linha por chamada ao provedor, inclusive cada volta do loop de ferramentas e cada retentativa (`tentativa` ≥ 1, lida de um contexto da execução), tokens de `ChatResponse.Usage` com NULL quando ausentes, `status`, duração, versão da tabela de preços; falha ao gravar é registrada em log e métrica e marca `registroCompleto = false` no resumo da execução, sem alterar o resultado (research R-09, R-16; P14) (depende de T029, T031)
 - [X] T033 [P] Implementar `src/AuditoriaNFe.Infrastructure/Ia/Simulacao/ChatClientSimulado.cs`, provedor simulado para uso local com `Ia:Provedor=Simulado`, que nunca apresenta dado simulado como real e é recusado fora de `Development` (plan.md, Structure Decision)
 - [X] T034 Implementar `src/AuditoriaNFe.Infrastructure/Ia/FabricaChatClient.cs`: `IChatClient` OpenAI por Chat Completions, sem armazenamento no provedor (R-03), com `UseOpenTelemetry()` sem dados sensíveis e `RegistroConsumoChatClient`; escolhe o simulado quando configurado (depende de T032, T033)
-- [ ] T035 [P] Criar os health checks em `src/AuditoriaNFe.Infrastructure/Saude/` para MongoDB, PostgreSQL e diretório `Aprovacao:Diretorio` gravável, sem expor dados nem detalhes internos (research R-21)
+- [X] T035 [P] Criar os health checks em `src/AuditoriaNFe.Infrastructure/Saude/` para MongoDB, PostgreSQL e diretório `Aprovacao:Diretorio` gravável, sem expor dados nem detalhes internos (research R-21)
 
 ### Endpoints e composição
 
