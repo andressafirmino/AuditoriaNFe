@@ -74,6 +74,7 @@ public sealed partial class SemSegredosTests
     [InlineData("Host=postgres;Password=${POSTGRES_APP_PASSWORD:?Defina POSTGRES_APP_PASSWORD no arquivo .env}")]
     [InlineData("mongodb://${MONGO_APP_USERNAME:?x}:${MONGO_APP_PASSWORD:?x}@mongodb:27017/auditoria_agente")]
     [InlineData("$\"mongodb://{_usuarioApp}:{_senhaApp}@{host}:{porta}/auditoria_agente\"")]
+    [InlineData("$\"Host={host};Username={_usuarioApp};Password={_senhaApp}\"")]
     public void Regras_aceitam_modelos_sem_valor(string linha)
     {
         Assert.DoesNotContain(Regras, regra => regra.Padrao.IsMatch(linha));
@@ -114,7 +115,7 @@ public sealed partial class SemSegredosTests
     [GeneratedRegex("\"ApiKey\"\\s*:\\s*\"[^\"]+\"", RegexOptions.IgnoreCase)]
     private static partial Regex ApiKeyEmJson();
 
-    [GeneratedRegex(@"\b(Password|Pwd)\s*=\s*(?!\$)[^;\s""']+", RegexOptions.IgnoreCase)]
+    [GeneratedRegex(@"\b(Password|Pwd)\s*=\s*(?![${])[^;\s""']+", RegexOptions.IgnoreCase)]
     private static partial Regex SenhaEmStringConexao();
 
     [GeneratedRegex(@"mongodb(\+srv)?://[^:/\s@${]+:[^@\s${]+@", RegexOptions.IgnoreCase)]

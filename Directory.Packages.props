@@ -25,6 +25,8 @@
     <PackageVersion Include="ModelContextProtocol.Core" Version="2.3.0" />
     <PackageVersion Include="MongoDB.Driver" Version="3.13.0" />
     <PackageVersion Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="10.0.3" />
+    <!-- Mesma versão do EF Core exigida pelo Npgsql.EntityFrameworkCore.PostgreSQL 10.0.3. -->
+    <PackageVersion Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.4" />
   </ItemGroup>
 
   <ItemGroup Label="Opções e configuração">
