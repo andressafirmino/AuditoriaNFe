@@ -19,11 +19,13 @@ mantenedora (DP-20), e o GitHub não permite que o autor aprove o próprio PR.
 - **Branches**:
   - `main` é a branch principal (constitution 3.5) e só recebe publicações, por PR vindo da `dev`;
   - `dev` é a branch de integração e recebe as features por PR;
-  - cada feature tem branch própria com o nome do Spec Kit (`NNN-nome-da-feature`), criada a partir
-    da `dev`.
+  - cada fase do `tasks.md` de uma feature tem branch própria, `feat/NNN-fase-N-nome` (por exemplo,
+    `feat/001-fase-2-fundacao`), criada a partir da `dev` atualizada depois do merge da fase
+    anterior, com um PR por fase para a `dev` (decisão da mantenedora em 2026-11-04);
+  - dentro da branch da fase, um commit por tarefa, com o ID da tarefa na mensagem.
 
   ```text
-  NNN-feature  ──PR──▶  dev  ──PR (publicação)──▶  main
+  feat/NNN-fase-N-nome  ──PR──▶  dev  ──PR (publicação)──▶  main
   ```
 
 - **Proteção da `main` e da `dev`** (mesmas regras nas duas):
@@ -52,6 +54,8 @@ mantenedora (DP-20), e o GitHub não permite que o autor aprove o próprio PR.
 - Bypass de administrador: anularia a proteção para todos os PRs.
 - Só a `main`, sem `dev`: rejeitado pela mantenedora em 2026-11-04; ela quer separar integração e
   publicação.
+- Uma branch por feature (`NNN-nome-da-feature`), com um único PR: substituída em 2026-11-04 por
+  uma branch por fase, para PRs menores e revisáveis.
 
 ## Referências
 
