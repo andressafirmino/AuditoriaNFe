@@ -17,8 +17,14 @@ constitution exige testes e avaliação (P17). Em cada história, os testes são
 falhar antes da implementação. TS-031 e TS-042 ficam adiados pelo desvio D-05.
 
 **Organization**: tarefas agrupadas por história de usuário. A ordem das fases segue a ordem de
-implementação do plano: o canal A2A (US2) e o Sofia.Simulator (US6) ficam por último porque o
-contrato com a SOFIA ainda é provisório (DP-27, research R-32), embora a US2 seja P1.
+implementação do plano: o canal A2A (US2) e o Sofia.Simulator (US6) ficam por último, embora a US2
+seja P1, porque o núcleo é validado primeiro pelo canal direto. Desde 2026-11-05, as Fases 8 e 9
+seguem o contrato SOFIA v1.0 (DP-27 resolvida na constitution 2.2.0, research R-32, ADR-0011), e a
+Fase 10 foi renumerada de T153–T159 para T158–T165, com o README em T164 e o checklist do PR em
+T165. T166 e T167 (CORS, FR-052e) foram acrescentadas à Fase 2 depois da conclusão dela. A Fase 11
+(T168 a T172, publicação somente do Agent Card no Vercel, D-08) vem depois do Polish para não
+bloquear a execução em ordem; depende só da Fase 2 e da aprovação do D-08 e do ADR-0012, e é
+executada por pedido explícito.
 
 **Ajuste em relação à ordem do plano**: a análise por IA da etapa 7 (agente interno, saída
 `ContratoIaV1`, validação e retentativas) entra na US1, com o `IChatClient` simulado nos testes. Sem
@@ -107,7 +113,8 @@ do host, guarda do D-05 e infraestrutura de testes.
 - [X] T036 [P] Criar `src/Api.Agente/Identificacao/LeitorIdentificacaoHttp.cs`, que lê `X-Usuario-Id` e `X-Chamador-Id` e monta a `IdentificacaoSolicitante`; formato inválido → 400 com ERR-007, sem execução (FR-052a, FR-052c)
 - [X] T037 [P] Criar `src/Api.Agente/Erros/MapeamentoErrosHttp.cs` com o mapeamento do plano: ERR-001, ERR-003, ERR-007 e ERR-021 → 400; ERR-002 → 413; ERR-005 → 404; ERR-006 → 410; ERR-020 → 409; ERR-022 e ERR-025 → 503; ERR-024 → 429 com `Retry-After`; corpo com o envelope e o objeto `erro` (constitution 4.4)
 - [X] T038 Criar `src/Api.Agente/Program.cs` e `src/Api.Agente/appsettings.json` (sem segredos): opções, OpenTelemetry com `execucaoId` e `correlacaoId` em todos os logs e sem conteúdo de XML, pergunta, resposta, contexto do usuário ou `usuarioId` em claro (ADR-0009, P16); OpenAPI e Swagger UI só em `Development` (R-20); guarda do D-05 que recusa iniciar fora de `Development` enquanto `Seguranca:AutenticacaoHabilitada=false` (R-17); limite de corpo `Limites:CorpoHttpBytes`; limitação de taxa em janela fixa por `chaveIsolamento` (`LimiteTaxa:PermissoesPorJanela`, `LimiteTaxa:Janela`) nas rotas de análise e de decisão; limite de concorrência `Concorrencia:MaxExecucoes`; rejeição pelos dois limites com ERR-024 e `Retry-After`; migrações quando `Persistencia:AplicarMigracoes=true`; `/health/live` e `/health/ready` (depende de T025, T028, T029, T034 a T037)
-
+- [X] T166 [P] Criar `tests/AuditoriaNFe.Tests/Contrato/CorsNavegadorTests.cs` com host de teste (`UseTestServer`) montado pelas mesmas extensões do `Program.cs`: TS-070 (preflight `OPTIONS` de origem configurada em rota do grupo `/api/v1` → `Access-Control-Allow-Origin` igual à origem, métodos e cabeçalhos permitidos, sem `Access-Control-Allow-Credentials`; origem não configurada, lista vazia e rotas fora do grupo, como Agent Card e saúde → sem permissão CORS; requisição sem `Origin` → resposta normal sem cabeçalhos CORS; requisição real de origem configurada → `Vary: Origin` e `Retry-After` exposto; origem com caminho, barra final, curinga ou esquema diferente de http/https → falha na inicialização; entradas vazias ignoradas) (FR-052e, research R-34)
+- [X] T167 Implementar `src/Api.Agente/Seguranca/CorsNavegadorExtensions.cs` (política `SofiaBrowser` com `Cors:AllowedOrigins` validado, `GET`/`POST`/`PUT`/`DELETE`, `Content-Type`, `X-Usuario-Id` e `X-Chamador-Id`, `Retry-After` exposto, sem credenciais) e `src/Api.Agente/Endpoints/RotasApiV1.cs` (grupo `/api/v1` com `RequireCors`); ligar `UseCors` entre `UseRouting` e `UseRateLimiter` no `Program.cs`; `Cors:AllowedOrigins` vazio em `appsettings.json`; `Cors__AllowedOrigins__0` com padrão vazio no `docker-compose.yml` e comentado no `.env.example` (FR-052e, plan "CORS") (depende de T166)
 ### Infraestrutura de testes
 
 - [X] T039 [P] Criar os duplos em `tests/AuditoriaNFe.Tests/Duplos/`: `RelogioControlado.cs` e `ChatClientRoteirizado.cs`, que devolve respostas roteirizadas (válidas, inválidas, exceção, tempo esgotado, com e sem `Usage`) (research R-23)
@@ -148,7 +155,7 @@ conhecidos de cada arquivo, com pacote e data de referência por documento.
 - [ ] T054 [P] [US1] Criar `tests/AuditoriaNFe.Tests/Integracao/CargaSchemasCatalogosTests.cs`: a inicialização falha com SHA-256 divergente, XSD ausente, arquivo fora do manifesto, vigências sobrepostas ou com lacuna, regra sem fonte ou sem vigência, implementação inexistente, versões sobrepostas e regra com campo fora do catálogo de extração (data-model §5 e §6)
 - [ ] T055 [P] [US1] Criar `tests/AuditoriaNFe.Tests/Aplicacao/AnaliseIaTests.cs` com `ChatClientRoteirizado`: TS-018 (instrução em `infCpl` não altera comportamento nem contrato), TS-027 (provedor indisponível → ERR-014, determinísticos entregues, "Inconclusiva"), TS-028 (resposta inválida em todas as tentativas → ERR-015 após `Ia:MaxTentativas`, conteúdo descartado, cada tentativa no consumo), ERR-016 por `Execucao:TempoMaximo`, indício sem evidência verificável rejeitado, indício que tenta alterar achado determinístico ignorado (FR-021) e prompt sem CPF, nomes de pessoa física, endereço, telefone ou e-mail (ADR-0004)
 - [ ] T056 [P] [US1] Criar `tests/AuditoriaNFe.Tests/Aplicacao/ConsultaManuaisTests.cs`: TS-046 (MCP desabilitado → etapa "não aplicável — integração não habilitada", limitação e revisão humana), TS-026 e TS-047 (habilitado e indisponível → ERR-013, "Inconclusiva"), TS-038 (sem trechos → "Ausência de evidências" e revisão humana), FR-047d no parecer
-- [ ] T057 [P] [US1] Criar `tests/AuditoriaNFe.Tests/Integracao/ExecucoesLoteTests.cs` por `POST /api/v1/execucoes`: TS-001 a TS-013 (TS-006 exatamente no limite aceito; TS-007 um byte acima → ERR-002 em até 2 s, sem processamento parcial; TS-008 → ERR-003; ERR-001 sem pergunta e sem arquivos), TS-036 (XML original não persistido), `GET /api/v1/execucoes/{execucaoId}` com outra identificação → ERR-005, TS-063 (acima de `LimiteTaxa:PermissoesPorJanela` → 429 com ERR-024 e `Retry-After`, sem análise) e TS-064 (contêiner do MongoDB parado → ERR-025 dentro de `Persistencia:TimeoutMongo`, sem parecer parcial)
+- [ ] T057 [P] [US1] Criar `tests/AuditoriaNFe.Tests/Integracao/ExecucoesLoteTests.cs` por `POST /api/v1/execucoes`: TS-001 a TS-013 (TS-006 exatamente no limite aceito; TS-007 um byte acima → ERR-002 em até 2 s, sem processamento parcial; TS-008 → ERR-003; ERR-001 sem pergunta e sem arquivos), TS-036 (XML original não persistido), `GET /api/v1/execucoes/{execucaoId}` com outra identificação → ERR-005, TS-063 (acima de `LimiteTaxa:PermissoesPorJanela` → 429 com ERR-024 e `Retry-After`, sem análise) e TS-064 (contêiner do MongoDB parado → ERR-025 dentro de `Persistencia:TimeoutMongo`, sem parecer parcial); com `Cors:AllowedOrigins` configurado no host, preflight de `POST /api/v1/execucoes` da origem configurada recebe a permissão e o de outra origem não (TS-070 no pipeline real)
 - [ ] T058 [P] [US1] Criar os testes de contrato em `tests/AuditoriaNFe.Tests/Contrato/`: `OpenApiContratoTests.cs` (documento gerado igual a `contracts/api-agente.openapi.yaml`), `EnvelopeV1ContratoTests.cs` (envelope conforme `EnvelopeV1`) e `ContratoIaV1SchemaTests.cs` (schema gerado pelo tipo igual a `contracts/contrato-ia-v1.schema.json`, R-05)
 - [ ] T059 [P] [US1] Criar `tests/AuditoriaNFe.Tests/Integracao/RastreabilidadeExecucaoTests.cs` (NFR-008, P16): a partir só do `execucaoId`, reconstruir as nove etapas com início, fim e estado, o pacote aplicado e a data de referência de cada documento, as `regrasAplicadas` com versão e resultado, os `trechosConsultados` e as linhas de `consumo.chamadas_provedor` da execução
 - [ ] T060 [P] [US1] Criar o conjunto de avaliação da análise por IA em `tests/AuditoriaNFe.Tests/Avaliacao/conjunto-avaliacao-analise.v1.json` (pelo menos 20 lotes sintéticos, com divergências conhecidas em cada grupo de regra e lotes sem divergência) e `tests/AuditoriaNFe.Tests/Avaliacao/AvaliacaoAnaliseTests.cs` com trait `Categoria=Avaliacao`, medindo os critérios do plano: 0 indícios sem evidência verificável, 0 indícios que contradizem ou repetem como novo um achado determinístico e 0 valores não rastreáveis no resumo (P17)
@@ -183,7 +190,7 @@ conhecidos de cada arquivo, com pacote e data de referência por documento.
 - [ ] T086 [US1] Implementar `src/AuditoriaNFe.Application/Servicos/ValidadorSaidaIa.cs` para indícios, ausências de evidência e resumo: validação estrutural e semântica (evidência `CampoXml` existe nos dados extraídos, `RegraCatalogo` existe no catálogo, `TrechoManual` pertence ao conjunto recuperado, achado citado existe), nova tentativa com mensagem de correção até `Ia:MaxTentativas` e ERR-015 ao esgotar (P08, data-model §15) (depende de T080)
 - [ ] T087 [US1] Implementar `src/AuditoriaNFe.Application/Servicos/MontadorParecer.cs`: `resumoQuantitativo`, `documentos` com `dataReferencia`, `origemDataReferencia`, `pacoteAplicado`, `pacotesTentados` e `emConvivencia`, achados, limitações, validações não realizadas, revisão humana, `integracaoMcp`, versões e `resumoTextual` da IA validada ou de modelo de texto do sistema quando a IA estiver indisponível (FR-017, FR-010d, data-model §10) (depende de T068)
 - [ ] T088 [US1] Implementar `src/AuditoriaNFe.Application/Fluxo/FluxoNoveEtapas.cs` e `src/AuditoriaNFe.Application/CasosDeUso/ExecutarSolicitacaoAuditoria.cs`: as nove etapas da constitution 3.4 na ordem do plano, com estado e justificativa por etapa; limites e conteúdo mínimo antes de ler os XMLs (ERR-001 a ERR-003); falha nas etapas 1 e 2 interrompe; erros por arquivo não impedem os demais; conteúdo só para layout aprovado (FR-015); etapa 6 "não aplicável" (sem ferramentas externas na v1); tempo máximo `Execucao:TempoMaximo` com ERR-016 e etapas concluídas e não executadas registradas; nova sessão quando não houver `sessaoId`; persistência da execução e dos documentos; XML descartado ao fim (depende de T069 a T073, T076, T077, T079, T084 a T087)
-- [ ] T089 [US1] Implementar `src/Api.Agente/Endpoints/ExecucoesEndpoints.cs`: `POST /api/v1/execucoes` (multipart com `pergunta`, `arquivos[]`, `sessaoId`, `correlacaoId`) e `GET /api/v1/execucoes/{execucaoId}` conferindo a `chaveIsolamento` (ERR-005), respostas no envelope v1 e rejeição por limite em até 2 s (NFR-002) (depende de T088)
+- [ ] T089 [US1] Implementar `src/Api.Agente/Endpoints/ExecucoesEndpoints.cs` no grupo de `RotasApiV1` (CORS `SofiaBrowser`, FR-052e): `POST /api/v1/execucoes` (multipart com `pergunta`, `arquivos[]`, `sessaoId`, `correlacaoId`) e `GET /api/v1/execucoes/{execucaoId}` conferindo a `chaveIsolamento` (ERR-005), respostas no envelope v1 e rejeição por limite em até 2 s (NFR-002) (depende de T088)
 - [ ] T090 [US1] Criar `tests/AuditoriaNFe.Tests/Integracao/LogsSemConteudoTests.cs`, que captura os logs de uma execução completa e falha se encontrar trecho de XML, pergunta, resposta, CPF ou `usuarioId` em claro, ou linha sem `execucaoId` (NFR-007, P16) (depende de T089)
 
 **Checkpoint**: US1 funciona sozinha pelo canal direto; TS-001 a TS-013, TS-018, TS-026 a TS-028,
@@ -215,13 +222,13 @@ reenviar arquivos e verificar que a resposta usa os resultados anteriores; repet
 - [ ] T097 [US4] Persistir a `AgentSession` do agente interno no campo `historicoAgente` da sessão por `SerializeSessionAsync` e `DeserializeSessionAsync` em `src/AuditoriaNFe.Infrastructure/Persistencia/Mongo/SessaoRepositorio.cs`, isolada pela chave (research R-08)
 - [ ] T098 [US4] Implementar `src/AuditoriaNFe.Application/ContextProviders/ContextoSessaoProvider.cs` (resumo da base da sessão) e configurar a redução de histórico por `Historico:MaxMensagens`, confirmando na versão 1.26.0 o ponto de configuração do redutor (research R-08)
 - [ ] T099 [US4] Integrar a continuidade em `src/AuditoriaNFe.Application/CasosDeUso/ExecutarSolicitacaoAuditoria.cs`: `sessaoId` informado, incorporação de novos documentos à base da sessão com duplicidade contra `hashesPorChave` (FR-038, FR-009) (depende de T096 a T098)
-- [ ] T100 [P] [US4] Implementar `src/Api.Agente/Endpoints/SessoesEndpoints.cs` com `DELETE /api/v1/sessoes/{sessaoId}` (FR-041) (depende de T096)
+- [ ] T100 [P] [US4] Implementar `src/Api.Agente/Endpoints/SessoesEndpoints.cs` no grupo de `RotasApiV1` com `DELETE /api/v1/sessoes/{sessaoId}` (FR-041) (depende de T096)
 - [ ] T101 [P] [US4] Criar `ContextoUsuario` em `src/AuditoriaNFe.Domain/ContextoUsuario/ContextoUsuario.cs` (data-model §13): `_id` = `chaveIsolamento`; `cnpjsAuditados[]` com `cnpj` "14 caracteres, numérico ou alfanumérico", `papel` "`Emitente` ou `Destinatario`", `quantidadeDocumentos`, `ultimaAuditoriaEm`, `origem`; `achadosRecorrentes[]` com `chave` "`regraId` ou tipo de erro estrutural", `categoria`, `frequencia`, `ultimaOcorrenciaEm`, `origem`; `preferencias` com `nivelDetalhe` "`Resumido` ou `Detalhado`" e `tributosInteresse[]` "(lista fechada)"; `origem` com `tipo` "`Execucao` ou `DeclaracaoUsuario`"; `execucoesContabilizadas` limitada; `expiraEm` "`ultimaAtividadeEm` + `ContextoUsuario:RetencaoInatividade` (90 dias)"
 - [ ] T102 [US4] Implementar `src/AuditoriaNFe.Infrastructure/Persistencia/Mongo/ContextoUsuarioRepositorio.cs`: leitura e gravação pela `chaveIsolamento`, leitura que "ignora documento com `expiraEm` vencido, mesmo antes da remoção pelo TTL", exclusão total e de itens (depende de T101)
 - [ ] T103 [US4] Implementar `src/AuditoriaNFe.Application/Servicos/AtualizadorContextoUsuario.cs` chamado na etapa 9: idempotente por execução, só para usuário identificado, a partir dos resultados determinísticos; marca `contextoUsuarioAtualizado` (FR-055a, FR-055b, FR-057) (depende de T102)
 - [ ] T104 [US4] Implementar `src/AuditoriaNFe.Application/ContextProviders/ContextoUsuarioProvider.cs`, só leitura, dado delimitado e não confiável, limitado por `ContextoUsuario:MaxItensNoPrompt`, sem uso para "anonimo" e sem implementação de gravação em `StoreAIContextAsync` (research R-07, FR-058) (depende de T102)
 - [ ] T105 [US4] Implementar `src/AuditoriaNFe.Application/CasosDeUso/GerirContextoUsuario.cs`: consultar, declarar ou corrigir preferências, remover CNPJ, remover achado recorrente e excluir o contexto; cada declaração renova `expiraEm` (FR-059, FR-060) (depende de T102)
-- [ ] T106 [US4] Implementar `src/Api.Agente/Endpoints/ContextoUsuarioEndpoints.cs`: `GET /api/v1/contexto-usuario`, `PUT /api/v1/contexto-usuario/preferencias`, `DELETE /api/v1/contexto-usuario/cnpjs/{cnpj}`, `DELETE /api/v1/contexto-usuario/achados-recorrentes/{chave}` e `DELETE /api/v1/contexto-usuario` (depende de T105)
+- [ ] T106 [US4] Implementar `src/Api.Agente/Endpoints/ContextoUsuarioEndpoints.cs` no grupo de `RotasApiV1`: `GET /api/v1/contexto-usuario`, `PUT /api/v1/contexto-usuario/preferencias`, `DELETE /api/v1/contexto-usuario/cnpjs/{cnpj}`, `DELETE /api/v1/contexto-usuario/achados-recorrentes/{chave}` e `DELETE /api/v1/contexto-usuario` (depende de T105)
 
 **Checkpoint**: US1 e US4 funcionam juntas; TS-021 a TS-025 e TS-054 a TS-059 passam.
 
@@ -310,7 +317,7 @@ canal direto e verificar o que a consulta da execução devolve e o que fica no 
 - [ ] T134 [US7] Implementar `src/AuditoriaNFe.Application/CasosDeUso/DecidirRecomendacao.cs` e `ConsultarRecomendacoes.cs`: aprovador = usuário informado, sem verificação (D-05); decisão única (ERR-020); justificativa obrigatória na rejeição (ERR-021); consulta por execução ou sessão com a visibilidade por estado (FR-035e, FR-035g) (depende de T133)
 - [ ] T135 [US7] Iniciar um workflow por recomendação sensível na etapa 9 de `src/AuditoriaNFe.Application/CasosDeUso/ExecutarSolicitacaoAuditoria.cs`, sem esperar a decisão (FR-035c) (depende de T133)
 - [ ] T136 [US7] Em `src/AuditoriaNFe.Application/Sessoes/ServicoSessoes.cs`, ao expirar ou encerrar a sessão, passar as recomendações `PendenteAprovacao` para `Indisponivel` e registrar o motivo no checkpoint (FR-035i) (depende de T131)
-- [ ] T137 [US7] Implementar `src/Api.Agente/Endpoints/RecomendacoesEndpoints.cs`: `GET /api/v1/recomendacoes/pendentes`, `POST /api/v1/recomendacoes/{id}/aprovacao` e `POST /api/v1/recomendacoes/{id}/rejeicao` (`justificativa`) (depende de T134)
+- [ ] T137 [US7] Implementar `src/Api.Agente/Endpoints/RecomendacoesEndpoints.cs` no grupo de `RotasApiV1`: `GET /api/v1/recomendacoes/pendentes`, `POST /api/v1/recomendacoes/{id}/aprovacao` e `POST /api/v1/recomendacoes/{id}/rejeicao` (`justificativa`) (depende de T134)
 
 **Checkpoint**: TS-040, TS-041 e TS-043 a TS-045 passam pelo canal direto; SC-004a vale no REST.
 
@@ -318,54 +325,65 @@ canal direto e verificar o que a consulta da execução devolve e o que fica no 
 
 ## Phase 8: User Story 2 - SOFIA descobre o agente e o invoca por A2A (Priority: P1)
 
-**Goal**: servidor A2A real com o SDK fixado, Agent Card em `/.well-known/agent-card.json` e o mesmo
-caso de uso do canal direto (FR-043 a FR-047, proposta v1 provisória do contrato, DP-27, D-04).
+**Goal**: canal A2A real que fala o contrato SOFIA v1.0 no perfil A2A v0.3 (`message/send`), com o
+Agent Card v0.3 em `/.well-known/agent-card.json` e o mesmo caso de uso do canal direto (FR-043 a
+FR-047, FR-052d; contrato `contracts/sofia-a2a.md` e JSON Schemas; ADR-0011; D-04 revisado; D-07).
 
-**Independent Test**: obter o Agent Card, enviar o mesmo lote por A2A e pelo canal direto e comparar
-os achados determinísticos.
+**Independent Test**: obter o Agent Card, enviar uma `SolicitacaoAnaliseSofia` com um lote conhecido
+e comparar os achados do `ResultadoAnaliseSofia` com o parecer do mesmo lote pelo canal direto.
 
-**Dependência de contrato**: o adaptador desta fase pode mudar com o contrato definitivo da SOFIA
-(DP-27); mudanças acordadas entram como nova versão de `contracts/sofia-a2a.md`.
+**Pré-requisito de aprovação**: ADR-0011, a revisão do D-04 e o D-07 aprovados por Andressa Firmino
+(plan.md, Complexity Tracking). Sem a aprovação, nenhuma tarefa desta fase é iniciada.
+
+### Validação do SDK (spike)
+
+- [ ] T138 [US2] Adicionar `A2A`, `A2A.AspNetCore`, `A2A.V0_3Compat` e `A2A.V0_3` 1.0.0-preview3 a `Directory.Packages.props` e ao projeto de testes, e criar `tests/AuditoriaNFe.Tests/Contrato/CompatibilidadeA2AV03Tests.cs` com um `IAgentHandler` de teste que publica um Artifact pelo `TaskUpdater`: o card servido por `MapAgentCardGetWithV03Compat` sem cabeçalho `A2A-Version` sai no formato v0.3 (`url`, `protocolVersion`, `preferredTransport`, extensões); `message/send` v0.3 por `MapA2AWithV03Compat` devolve Task `completed` com o Artifact quando `configuration` é omitido e com `blocking: true`; `FailAsync` devolve Task `failed` com a mensagem de status; o cliente `A2A.V0_3` lê os dois. Verificar também se o `AddA2AServer` do MAF aceita um `IAgentHandler` próprio com a chave do agente e se o seu `IA2ARequestHandler` pode ser mapeado com `MapA2AWithV03Compat`; registrar o resultado em `research.md` R-11 e, se o caminho do MAF funcionar, encerrar o D-07 no `plan.md` e usar esse caminho em T150 (research R-11, §3.9)
 
 ### Tests for User Story 2 ⚠️
 
-- [ ] T138 [P] [US2] Criar `tests/AuditoriaNFe.Tests/Contrato/AgentCardTests.cs`: TS-029, card válido no SDK fixado com todos os campos do FR-044, limites da configuração, extensão `urn:agente-auditoria-nfe:contrato` com `situacaoContrato: "provisorio"` e `autenticacao: "nenhuma — somente ambiente local de testes"`, sem `securitySchemes`, segredos nem dados de usuário (FR-045, FR-052b, NFR-013)
-- [ ] T139 [P] [US2] Criar `tests/AuditoriaNFe.Tests/Contrato/MensagensA2ATests.cs`: TS-032 (mensagem malformada, parte `url` ou `data` → ERR-007), metadados inválidos (`usuarioId`, `chamadorId`, `correlacaoId` fora de `[A-Za-z0-9._:-]` ou acima de 128 caracteres, `preferencias` fora da lista) → ERR-007, nível dos metadados (solicitação ou mensagem) no SDK fixado e as lições V-06, V-09 e V-10 do AgenteFinanceiro (research R-11, R-33)
-- [ ] T140 [P] [US2] Criar `tests/AuditoriaNFe.Tests/Integracao/A2AFimAFimTests.cs` com o cliente `Microsoft.Agents.AI.A2A`: TS-030 (achados determinísticos idênticos aos do REST), TS-034 (correlação devolvida com `execucaoId` e `sessaoId`), TS-033 limitado pelo D-04 (só o estado final), continuidade por `contextId` e `sessaoId`, `contextId` reutilizado por outro usuário sem acesso ao histórico, operação `consultar-recomendacoes` devolvendo aprovadas e nunca o conteúdo das rejeitadas (FR-035g, SC-004a), `preferencias` gravadas no contexto do usuário
+- [ ] T139 [P] [US2] Criar `tests/AuditoriaNFe.Tests/Contrato/AgentCardTests.cs`: TS-029, card v0.3 com todos os campos do FR-044 conforme `contracts/sofia-a2a.md` §2, habilidade `analisar_documentos`, extensão `urn:infis:sofia:contrato` (`required: false`) com `versaoContrato: "1.0"`, `idAgente` de `A2A:IdAgente`, `nomeArtifact: "analise-sofia-v1"`, limites da configuração e `autenticacao: "nenhuma — somente ambiente local de testes"`; `url` = `{A2A:UrlPublica}/a2a/auditoria-nfe`; `streaming` e `pushNotifications` falsos; sem `securitySchemes`, segredos nem dados de usuário; com `A2A-Version: 1.0`, o mesmo card no formato 1.0 (FR-044a, FR-045, FR-052b, NFR-013)
+- [ ] T140 [P] [US2] Criar `tests/AuditoriaNFe.Tests/Contrato/ContratoSofiaTests.cs` e as fixtures `tests/AuditoriaNFe.Tests/Fixtures/Sofia/` (cópia de `contracts/exemplos/`, o exemplo da referência oficial e exemplos inválidos; o teste falha se a cópia divergir dos exemplos do contrato): os exemplos válidos passam e os inválidos falham nos JSON Schemas `contracts/sofia-*-v1.schema.json` (biblioteca `JsonSchema.Net` com suporte a Draft 2020-12, versão estável fixada em `Directory.Packages.props` e registrada em research §1); serialização dos DTOs em camelCase com ida e volta; validador com as regras adicionais (`versaoContrato` diferente de `"1.0"`, campo obrigatório ausente ou vazio, `usuario.nome` acima de 200 caracteres, `pergunta` acima de 4.000, `idDocumento` repetido ou acima de 128, quantidade e soma dos bytes UTF-8 acima dos limites) → ERR-007, ERR-003 ou ERR-002; campos desconhecidos ignorados (FR-043a, TS-066)
+- [ ] T141 [P] [US2] Criar `tests/AuditoriaNFe.Tests/Contrato/MapeadoresSofiaTests.cs`: solicitação → arquivos recebidos com `idDocumento`, bytes UTF-8 do `texto` e `tipo` ignorado; identificação pelo nome com normalização (NFC, espaços, minúsculas) e `usuarioId` = `nome-sha256:<hex>`; resultado com `status` pela tabela do data-model §18 (`concluido`, `parcial` por ERR-008 a ERR-010, ERR-023 e "Inconclusiva", `erro` por `Rejeitada` e `Falhou`), severidade traduzida e `Informativa` omitida, `idDocumentos` só com IDs recebidos, evidências montadas sem invenção, observações na ordem do contrato §5.5 (recomendação sensível só como "pendente de aprovação", sem conteúdo), `erro` só em `status: erro`; todo resultado gerado valida no schema do resultado (FR-043b, FR-043e a FR-043g)
+- [ ] T142 [P] [US2] Criar `tests/AuditoriaNFe.Tests/Contrato/MensagensA2ATests.cs` com `WebApplicationFactory`: TS-032 (sem parte de texto, mais de uma parte, texto que não é objeto JSON, `idExecucao` ou `idSolicitacao` ausente ou fora do formato UUID → Task `failed` com "ERR-007", sem Artifact e sem execução criada); demais violações → Task `completed` com `status: erro`; `contexto.instrucoes` não aplicado; lições V-06 (Artifact presente na Task final), V-09 (`global::A2A.`) e V-10 (mensagem com `taskId` de Task encerrada recebe o erro do SDK) do AgenteFinanceiro (research R-11, R-33)
+- [ ] T143 [P] [US2] Criar `tests/AuditoriaNFe.Tests/Integracao/A2AFimAFimTests.cs` com Testcontainers e o cliente `A2A.V0_3`: TS-030 (achados determinísticos iguais aos do REST), TS-033 (Task no estado final; acima de `Execucao:TempoMaximo` reduzido no teste → `status: erro` com ERR-016), TS-034 (IDs devolvidos sem alteração, gravados na execução, `correlacaoId` = `idSolicitacao`), TS-065 (NF-e válida + documento que não é NF-e → `parcial`), TS-066 de ponta a ponta, TS-067 (mesmo nome normalizado → mesmo contexto do usuário; outro nome não acessa; `usuarioNome` na sessão e na execução e ausente dos logs capturados e do envio ao `IChatClient` simulado), TS-068 (repetição do `idSolicitacao`: concluída → mesmo resultado sem nova execução nem chamada ao `IChatClient`; em andamento → ERR-026; após `Falhou` → nova execução; outro `idExecucao` → ERR-007; duas simultâneas → uma execução), TS-069 (`traceparent` continuado e IDs da SOFIA nos logs capturados, sem nome, pergunta ou texto; documento com instruções em `infCpl` não seguidas), dois documentos rastreáveis pelo `idDocumento` nos achados, requisição abandonada → execução `Falhou` com ERR-027, uma sessão nova por solicitação, limite de taxa → 429 e corpo acima do limite → 413
 
 ### Implementation for User Story 2
 
-- [ ] T141 [US2] Implementar `src/AuditoriaNFe.Application/Agente/AgenteAuditoriaNFe.cs` (`AIAgent` personalizado): converte texto e `DataContent` XML em solicitação, lê metadados de `AgentRunOptions.AdditionalProperties`, decide a operação (`analisar`, `perguntar`, `consultar-recomendacoes`) e delega a `ExecutarSolicitacaoAuditoria` ou `ConsultarRecomendacoes`; devolve resumo em texto, envelope v1 como `DataContent` JSON e identificadores em `AgentResponse.AdditionalProperties` (research R-04, R-11)
-- [ ] T142 [US2] Implementar `src/AuditoriaNFe.Infrastructure/Persistencia/Mongo/AgentSessionStoreMongo.cs` (`AgentSessionStore`, coleção `sessoes_agente`), que guarda só o mapa `chaveIsolamento → sessaoId` por `contextId`, sem histórico nem conteúdo (data-model §1, research R-08)
-- [ ] T143 [P] [US2] Implementar `src/Api.Agente/A2A/LeitorMetadadosA2A.cs` com as regras de `contracts/sofia-a2a.md` §4.3 (prioridade para os metadados da solicitação) e a montagem da `IdentificacaoSolicitante`
-- [ ] T144 [P] [US2] Implementar `src/Api.Agente/A2A/FabricaAgentCard.cs`, que gera o card de `contracts/sofia-a2a.md` §2 a partir da configuração (limites, versão), com as três habilidades e sem `securitySchemes`
-- [ ] T145 [US2] Implementar `src/Api.Agente/A2A/RegistroA2A.cs` e ligá-lo em `src/Api.Agente/Program.cs`: agente com chave `"auditoria-nfe"`, `AgentSessionStore` com a mesma chave, `AddA2AServer("auditoria-nfe", o => o.AgentRunMode = AgentRunMode.DisallowBackground)`, `MapA2AHttpJson` e `MapA2AJsonRpc` em `/a2a/auditoria-nfe`, `MapWellKnownAgentCard` em `/.well-known/agent-card.json`, sem `AgentIsolationKeyProvider` na v1 (depende de T141 a T144)
-- [ ] T146 [US2] Atualizar `specs/001-agente-auditoria-nfe/contracts/sofia-a2a.md` no mesmo PR se o SDK fixado usar nomes ou níveis de metadados diferentes dos documentados (contrato, §2 Regras)
+- [ ] T144 [US2] Estender o domínio e a persistência para o contrato SOFIA (data-model §0 a §3): `IdentificacaoSolicitante.TentarCriarPorNome(nome, chamadorPadrao, out ...)` com `UsuarioNome` e `usuarioId` = `nome-sha256:` + SHA-256 do nome normalizado; em `Sessao`, trocar `ContextoA2A` por `UsuarioNome`; em `Execucao`, acrescentar `IdExecucaoSofia`, `IdSolicitacaoSofia`, `UsuarioNome` e `ChaveIdempotenciaSofia` (removida na transição para `Falhou`); no repositório de execuções, busca pela chave e criação que trata a violação do índice único parcial em `execucoes` (`partialFilterExpression` com `$exists: true`, em `01-colecoes.js`) como execução concorrente (data-model §2, FR-043h); em `ArquivoRecebido`, acrescentar `IdDocumento`; atualizar os mapeamentos MongoDB, o `$jsonSchema` de `infra/mongodb/init/01-colecoes.js` quando a coleção validar campos, `tests/AuditoriaNFe.Tests/Integracao/RepositoriosMongoTests.cs` e os testes de domínio afetados (depende de T138)
+- [ ] T145 [P] [US2] Criar os DTOs e o validador do contrato em `src/Api.Agente/A2A/Sofia/`: `SolicitacaoAnaliseSofia`, `DocumentoSofia`, `ResultadoAnaliseSofia`, `AchadoSofia`, `AgenteSofia`, `ErroSofia` e `ValidadorSolicitacaoSofia`, com as regras de T140 e os limites de `Limites:*` (contrato §3.2, data-model §18)
+- [ ] T146 [US2] Implementar `src/Api.Agente/A2A/Sofia/MapeadorSolicitacaoSofia.cs` e estender a entrada de `src/AuditoriaNFe.Application/CasosDeUso/ExecutarSolicitacaoAuditoria.cs` com `idDocumento` por arquivo, IDs da SOFIA e `usuarioNome`, tipo `AnaliseComPergunta`, canal `A2A` e sessão nova; antes de criar a execução, aplicar a tabela de repetição do data-model §2 (execução existente, ERR-026, ERR-007 ou nova execução) e encerrar como `Falhou` quando o cancelamento da requisição chegar (FR-043b, FR-043c, FR-043h, FR-043i, FR-052d) (depende de T144, T145)
+- [ ] T147 [US2] Implementar `src/Api.Agente/A2A/Sofia/MapeadorResultadoSofia.cs`: execução e parecer → `ResultadoAnaliseSofia` pela tabela do data-model §18 (depende de T145)
+- [ ] T148 [P] [US2] Implementar `src/Api.Agente/A2A/FabricaAgentCard.cs`, que gera o card de `contracts/sofia-a2a.md` §2 a partir de `A2A:UrlPublica`, `A2A:IdAgente`, limites e versão, com a habilidade `analisar_documentos` e sem `securitySchemes`. Se a T169 já tiver criado a fábrica com DTOs próprios, adaptá-la ao caminho decidido em T138 (tipos do SDK ou DTOs próprios), mantendo o mesmo JSON v0.3 e o parâmetro `implantacao` no modo `SomenteAgentCard`
+- [ ] T149 [US2] Implementar `src/Api.Agente/A2A/ManipuladorSofiaA2A.cs` (`IAgentHandler`): lê a única parte de texto, valida, chama o caso de uso e publica pelo `TaskUpdater` (`SubmitAsync`, `StartWorkAsync`, `AddArtifactAsync` com o Artifact `analise-sofia-v1` e `CompleteAsync`); sem IDs válidos, `FailAsync` com "ERR-007: …"; repetição devolvida pelo mesmo mapeador; tags do trace com `execucaoId`, `idExecucao` e `idSolicitacao` e métricas de duração e status por `idAgente` (NFR-014); nome do usuário, pergunta e textos fora dos logs, traces e métricas (research R-11, R-32) (depende de T146, T147)
+- [ ] T150 [US2] Implementar `src/Api.Agente/A2A/RegistroA2A.cs` e ligá-lo em `src/Api.Agente/Program.cs` pelo caminho decidido em T138: `A2AServer` com `ManipuladorSofiaA2A` e `InMemoryTaskStore`, `MapA2AWithV03Compat` em `/a2a/auditoria-nfe` e `MapAgentCardGetWithV03Compat` com `blendedCard = false` em `/.well-known/agent-card.json`, ambos fora do grupo `/api/v1` e sem CORS (FR-052e); mesmo limite de corpo, limitação de taxa e concorrência das rotas de análise; `A2A:UrlPublica`, `A2A:IdAgente` e `A2A:ChamadorPadrao` em `src/Api.Agente/appsettings.json`, no `docker-compose.yml` e no `.env.example` (sem valores secretos); referências A2A no `Api.Agente`; remover de `Directory.Packages.props` `Microsoft.Agents.AI.Hosting.A2A.AspNetCore` e `Microsoft.Agents.AI.A2A` se o caminho do MAF não for adotado, e ajustar a supressão de diagnósticos do `Directory.Build.props` (depende de T148, T149)
+- [ ] T151 [US2] Atualizar `contracts/sofia-a2a.md` e os JSON Schemas no mesmo PR se o SDK fixado usar nomes ou formatos diferentes dos documentados (contrato §2 e §5.1), sem mudar a versão `1.0` do contrato de negócio
 
-**Checkpoint**: TS-029, TS-030, TS-032 a TS-034 passam; o mesmo caso de uso atende os dois canais.
+**Checkpoint**: TS-029, TS-030, TS-032 a TS-034 e TS-065 a TS-069 passam; o mesmo caso de uso
+atende os dois canais; os exemplos do contrato validam nos schemas.
 
 ---
 
 ## Phase 9: User Story 6 - Validar a integração A2A com o Sofia.Simulator (Priority: P2)
 
-**Goal**: cliente de console que descobre o agente pelo Agent Card e envia uma solicitação A2A real
-com XMLs sintéticos e uma pergunta, exibindo o parecer (FR-048 a FR-051a).
+**Goal**: cliente de console que descobre o agente pelo Agent Card v0.3 e envia uma
+`SolicitacaoAnaliseSofia` real por A2A v0.3, com XMLs sintéticos, nome fictício e uma pergunta,
+exibindo o `ResultadoAnaliseSofia` (FR-048 a FR-051a; contrato §10).
 
 **Independent Test**: executar o simulador contra uma instância do agente e verificar que ele exibe
-o card, o estado da tarefa, o parecer, o resumo e os identificadores; com o agente desligado, verificar
-a falha de descoberta sem envio.
+o card, o estado da Task, o status, a análise, os achados, as observações e a conferência dos IDs; com
+o agente desligado, verificar a falha de descoberta sem envio.
 
 ### Tests for User Story 6 ⚠️
 
-- [ ] T147 [P] [US6] Criar `tests/AuditoriaNFe.Tests/Integracao/SimuladorTests.cs`: TS-035 (fluxo básico contra o host de teste: card exibido, solicitação enviada, parecer, estado e identificadores exibidos) e TS-035a (card inacessível: falha de descoberta informada, código de saída diferente de zero, nenhuma solicitação enviada)
+- [ ] T152 [P] [US6] Criar `tests/AuditoriaNFe.Tests/Integracao/SimuladorTests.cs`: TS-035 (fluxo básico contra o host de teste: card exibido com habilidade, `idAgente` e limites; solicitação enviada; estado da Task, status, análise, achados e observações exibidos; IDs conferidos) e TS-035a (card inacessível: falha de descoberta informada, código de saída diferente de zero, nenhuma solicitação enviada)
 
 ### Implementation for User Story 6
 
-- [ ] T148 [P] [US6] Criar os XMLs sintéticos do simulador em `src/Sofia.Simulator/Exemplos/` (um válido, um com erro de layout e um com totalizador divergente, gerados com dados fictícios) (FR-050)
-- [ ] T149 [US6] Implementar `src/Sofia.Simulator/Descoberta/DescobertaAgente.cs` com `A2ACardResolver`; falha → mensagem clara e término sem envio (FR-051a, research R-12)
-- [ ] T150 [US6] Implementar `src/Sofia.Simulator/Cenarios/CenarioBasico.cs` e `src/Sofia.Simulator/Exibicao/ExibicaoConsole.cs`: `GetAIAgentAsync` com `PreferredBindings = [ProtocolBindingNames.HttpJson]`, mensagem com `TextContent` e `DataContent` (`application/xml`), metadados `usuarioId`, `chamadorId` e `correlacaoId`, exibição das habilidades, do estado, do envelope, do resumo e dos identificadores (FR-049) (depende de T149)
-- [ ] T151 [P] [US6] Implementar os cenários opcionais `src/Sofia.Simulator/Cenarios/CenarioContinuidade.cs`, `CenarioRecomendacoes.cs` e `CenarioSemIdentificacao.cs` (FR-051) (depende de T150)
-- [ ] T152 [US6] Implementar `src/Sofia.Simulator/Program.cs` com os argumentos `--endereco` (padrão `http://localhost:5310`) e `--cenario` (`basico`, `continuidade`, `recomendacoes`, `sem-identificacao`) (depende de T150, T151)
+- [ ] T153 [P] [US6] Criar os XMLs sintéticos do simulador em `src/Sofia.Simulator/Exemplos/` (um válido, um com erro de layout, um com totalizador divergente e um texto que não é NF-e, gerados com dados fictícios) (FR-050)
+- [ ] T154 [US6] Implementar `src/Sofia.Simulator/Descoberta/DescobertaAgente.cs` com o `A2ACardResolver` do `A2A.V0_3` (sem cabeçalho `A2A-Version`); falha → mensagem clara e término sem envio (FR-051a, research R-12)
+- [ ] T155 [US6] Implementar `src/Sofia.Simulator/Cenarios/CenarioBasico.cs`, `src/Sofia.Simulator/Contrato/` (cópia própria dos DTOs do contrato SOFIA, sem referência aos projetos do agente) e `src/Sofia.Simulator/Exibicao/ExibicaoConsole.cs`: monta a `SolicitacaoAnaliseSofia` com `idExecucao` e `idSolicitacao` novos, nome fictício, pergunta e os XMLs lidos como texto; envia por `A2AClient.SendMessageAsync` sem `configuration`; exibe o card, o estado da Task, o status, a análise, os achados, as observações e o resultado da conferência dos IDs (FR-049) (depende de T154)
+- [ ] T156 [P] [US6] Implementar os cenários opcionais `src/Sofia.Simulator/Cenarios/CenarioDocumentoNaoSuportado.cs` (TS-065) e `CenarioContratoInvalido.cs` (`versaoContrato: "2.0"`, TS-066) (FR-051) (depende de T155)
+- [ ] T157 [US6] Implementar `src/Sofia.Simulator/Program.cs` com os argumentos `--endereco` (padrão `http://localhost:5310`) e `--cenario` (`basico`, `documento-nao-suportado`, `contrato-invalido`) (depende de T155, T156)
 
 **Checkpoint**: TS-035 e TS-035a passam; SC-005 atendido com o endereço como única configuração.
 
@@ -376,13 +394,38 @@ a falha de descoberta sem envio.
 **Purpose**: metas não funcionais, confirmação dos parâmetros marcados com *, avaliação real e
 validação do ambiente.
 
-- [ ] T153 Criar `tests/AuditoriaNFe.Tests/Integracao/CargaTests.cs` (trait `Categoria=Carga`, fora do CI padrão): lote de 5 MB e 20 arquivos em até 2 min p95 (NFR-001, SC-006), continuidade em até 30 s p95 (NFR-003), 10 análises simultâneas (NFR-004) e validação concorrente sobre o mesmo `XmlSchemaSet` em cache (research R-14); registrar os valores confirmados de `Ia:TimeoutChamada`, `Ferramentas:Timeout`, `Xml:ProfundidadeMaxima`, `Historico:MaxMensagens`, `ContextoUsuario:MaxCnpjs`, `ContextoUsuario:MaxAchados`, `ContextoUsuario:MaxItensNoPrompt`, `Mcp:Timeout`, `LimiteTaxa:PermissoesPorJanela`, `LimiteTaxa:Janela`, `Persistencia:TimeoutMongo` e `Persistencia:TimeoutPostgres` em `src/Api.Agente/appsettings.json`
-- [ ] T154 Executar os dois conjuntos de avaliação (análise e perguntas) com a OpenAI real (`--filter-trait "Categoria=Avaliacao"`), escolher `OpenAI:Modelo` pelo resultado (DP-05), conferir o preço do modelo em `precos-openai.v1.json` e registrar o resultado em `docs/avaliacao/avaliacao-v1.md` (SC-003, SC-004, SC-008)
-- [ ] T155 [P] Revisar com o responsável fiscal a lista `Sensibilidade:TermosTributos` em `src/Api.Agente/appsettings.json` (FR-035a)
-- [ ] T156 [P] Rodar `dotnet list package --vulnerable --include-transitive`, corrigir as versões em `Directory.Packages.props` ou registrar a justificativa em `docs/seguranca/dependencias-v1.md`; confirmar que `SemSegredosTests` e `LogsSemConteudoTests` passam (constitution 5.1, 5.2)
-- [ ] T157 Validar `specs/001-agente-auditoria-nfe/quickstart.md` do zero (`docker compose up`, Swagger, execução, simulador, consulta de consumo em `consumo.vw_consumo_diario`) e corrigir o guia no mesmo PR
-- [ ] T158 [P] Conferir que `contracts/api-agente.openapi.yaml`, `contracts/contrato-ia-v1.schema.json`, `contracts/ferramentas-agente.md` e `contracts/sofia-a2a.md` refletem a implementação (testes de contrato verdes) e passar o Redocly lint no OpenAPI
-- [ ] T159 Preencher na descrição do PR para a `dev` (modelo `.github/pull_request_template.md`) o checklist de conformidade com a constitution e a Definition of Done, citando as limitações do D-05 (execução só local), as pendências do ADR-0005 (prazos de remoção física) e da DP-27, e comentar "Aprovado" antes do merge (D-06)
+- [ ] T158 Criar `tests/AuditoriaNFe.Tests/Integracao/CargaTests.cs` (trait `Categoria=Carga`, fora do CI padrão): lote de 5 MB e 20 arquivos em até 2 min p95 (NFR-001, SC-006), continuidade em até 30 s p95 (NFR-003), 10 análises simultâneas (NFR-004) e validação concorrente sobre o mesmo `XmlSchemaSet` em cache (research R-14); registrar os valores confirmados de `Ia:TimeoutChamada`, `Ferramentas:Timeout`, `Xml:ProfundidadeMaxima`, `Historico:MaxMensagens`, `ContextoUsuario:MaxCnpjs`, `ContextoUsuario:MaxAchados`, `ContextoUsuario:MaxItensNoPrompt`, `Mcp:Timeout`, `LimiteTaxa:PermissoesPorJanela`, `LimiteTaxa:Janela`, `Persistencia:TimeoutMongo` e `Persistencia:TimeoutPostgres` em `src/Api.Agente/appsettings.json`
+- [ ] T159 Executar os dois conjuntos de avaliação (análise e perguntas) com a OpenAI real (`--filter-trait "Categoria=Avaliacao"`), escolher `OpenAI:Modelo` pelo resultado (DP-05), conferir o preço do modelo em `precos-openai.v1.json` e registrar o resultado em `docs/avaliacao/avaliacao-v1.md` (SC-003, SC-004, SC-008)
+- [ ] T160 [P] Revisar com o responsável fiscal a lista `Sensibilidade:TermosTributos` em `src/Api.Agente/appsettings.json` (FR-035a)
+- [ ] T161 [P] Rodar `dotnet list package --vulnerable --include-transitive`, corrigir as versões em `Directory.Packages.props` ou registrar a justificativa em `docs/seguranca/dependencias-v1.md`; confirmar que `SemSegredosTests` e `LogsSemConteudoTests` passam (constitution 5.1, 5.2)
+- [ ] T162 Validar `specs/001-agente-auditoria-nfe/quickstart.md` do zero (`docker compose up`, Swagger, execução, simulador, consulta de consumo em `consumo.vw_consumo_diario`) e corrigir o guia no mesmo PR
+- [ ] T163 [P] Conferir que `contracts/api-agente.openapi.yaml`, `contracts/contrato-ia-v1.schema.json`, `contracts/ferramentas-agente.md`, `contracts/sofia-a2a.md`, os JSON Schemas do contrato SOFIA e `contracts/exemplos/` refletem a implementação (testes de contrato verdes) e passar o Redocly lint no OpenAPI
+- [ ] T164 [P] Criar `README.md` na raiz: objetivo do agente, arquitetura (canal direto e canal A2A sobre o mesmo caso de uso), pré-requisitos, `docker compose up`, testes (`dotnet test` com os filtros de trait), integração com a SOFIA (Agent Card, `message/send`, contrato SOFIA v1.0, exemplos de `contracts/exemplos/`, rede Docker e `A2A__UrlPublica`), simulador e limitações do D-05, com links para o quickstart, o contrato e os ADRs; sem segredos
+- [ ] T165 Preencher na descrição do PR para a `dev` (modelo `.github/pull_request_template.md`) o checklist de conformidade com a constitution e a Definition of Done, citando as limitações do D-05 (execução só local e identificação A2A pelo nome), as pendências do ADR-0005 (prazos de remoção física) e a situação do D-07 e do D-08, e comentar "Aprovado" antes do merge (D-06)
+
+---
+
+## Phase 11: Publicação somente do Agent Card no Vercel (D-08)
+
+**Goal**: URL pública no Vercel que devolve o Agent Card do agente (contrato SOFIA v1.0, formato
+v0.3), com o `Api.Agente` no modo `SomenteAgentCard`, sem persistência, IA nem rotas de análise
+(FR-052f; ADR-0012; research R-35).
+
+**Independent Test**: em `Production` com `Hospedagem:Modo = SomenteAgentCard` e sem connection
+strings, o card e `/health/live` respondem e todas as outras rotas respondem 404; no Vercel, o card
+da URL pública traz a `url` do projeto.
+
+**Pré-requisito de aprovação**: D-08 e ADR-0012, aprovados por Andressa Firmino em 2026-11-05
+(plan.md, Complexity Tracking). Depende só da Fase 2.
+
+- [X] T168 [P] Criar `tests/AuditoriaNFe.Tests/Contrato/ModoSomenteAgentCardTests.cs` com `WebApplicationFactory<Program>` em `Production`, sem connection strings nem chave da OpenAI: TS-071 (com `Hospedagem:Modo = SomenteAgentCard`, o host inicia; `GET /.well-known/agent-card.json` → 200 com o card de `contracts/sofia-a2a.md` §2, `url` = `{A2A:UrlPublica}/a2a/auditoria-nfe`, `idAgente` de `A2A:IdAgente` e `implantacao` na extensão; `/health/live` → 200; `/health/ready`, `/swagger`, `/openapi/v1.json`, uma rota `/api/v1` e `POST /a2a/auditoria-nfe` → 404; card sem segredos nem cabeçalhos CORS; com `Hospedagem:Modo = Completo`, a inicialização falha pela guarda); em `Development`, o modo `Completo` continua aceito (FR-052b, FR-052f, FR-045)
+- [X] T169 [P] Implementar `src/Api.Agente/A2A/FabricaAgentCard.cs` e os DTOs do card v0.3 (`src/Api.Agente/A2A/AgentCardV03.cs`), gerando o JSON de `contracts/sofia-a2a.md` §2 a partir de `A2A:UrlPublica`, `A2A:IdAgente`, `Limites:*` e da versão do assembly, com a habilidade `analisar_documentos`, sem `securitySchemes` e com `implantacao` só no modo restrito; criar `A2AOpcoes` (`UrlPublica` como URL absoluta http/https, `IdAgente` obrigatório) com validação na inicialização e as chaves `A2A:*` em `src/Api.Agente/appsettings.json` (antecipa parte da T148 e da configuração da T150)
+- [X] T170 Implementar o modo de hospedagem: `Hospedagem:Modo` (`Completo` padrão, `SomenteAgentCard`) em `src/Api.Agente/appsettings.json`; em `src/Api.Agente/Program.cs`, no modo restrito, registrar só a fábrica do card, as opções necessárias e a verificação de vida e mapear `GET /.well-known/agent-card.json` e `/health/live`, sem MongoDB, PostgreSQL, IA, Swagger, OpenAPI, CORS, limites nem migrações; ajustar `src/Api.Agente/Seguranca/GuardaDesvioD05.cs` para aceitar ambiente diferente de `Development` só nesse modo, com mensagem que cite o D-05 e o D-08 (depende de T169)
+- [X] T171 Criar `Dockerfile.vercel` na raiz (mesmo build multiestágio de `src/Api.Agente/Dockerfile`, usuário não root, `ASPNETCORE_ENVIRONMENT=Production`, `Hospedagem__Modo=SomenteAgentCard`, `ASPNETCORE_HTTP_PORTS=${PORT:-8080}` na inicialização) e `.vercelignore` (`.env`, `.env.*`, `data/`, `**/bin/`, `**/obj/`, `.vs/`, `tests/`, `specs/`, `docs/`, `.cursor/`, `.specify/`); validar com `docker build -f Dockerfile.vercel` e a seção 8.8 do quickstart, passo 1; acrescentar o build dessa imagem ao `.github/workflows/ci.yml` (depende de T170)
+- [ ] T172 Publicar no Vercel conforme a seção 8.8 do quickstart: `vercel.json` com deploy automático só da `main`; projeto vinculado, `PORT=8080` e `A2A__UrlPublica` em preview e produção (sem connection strings nem chaves); preview pelo CLI (`vercel deploy`) com verificação do card, de `/health/live` e das rotas que devem responder 404; depois da PR `dev` → `main`, repositório conectado ao projeto e produção publicada pelo merge na `main`, com a mesma verificação; registrar a URL, o commit e o resultado das verificações em `research.md` R-35 (depende de T171)
+
+**Checkpoint**: TS-071 passa; a URL pública do Vercel devolve o card com a `url` do projeto; nenhuma
+rota além do card e de `/health/live` responde.
 
 ---
 
@@ -399,10 +442,15 @@ validação do ambiente.
 - **US5 (Phase 6)**: depende da US1 (achados e validador da saída da IA).
 - **US7 (Phase 7)**: depende da US5 (recomendações sensíveis) e da US4 (expiração e encerramento
   para o FR-035i).
-- **US2 (Phase 8)**: depende da US1; a operação `perguntar` usa a US3, `consultar-recomendacoes`
-  depende da US7, e o metadado `preferencias` depende da US4.
+- **US2 (Phase 8)**: depende da US1 (análise com pergunta e parecer) e das aprovações do ADR-0011,
+  da revisão do D-04 e do D-07. O resultado usa as recomendações da US5 quando existirem, e o
+  TS-067 usa o contexto do usuário da US4; o contrato SOFIA v1.0 não depende da US3 nem da US7.
+  T138 (spike) vem antes de todas as outras tarefas da fase.
 - **US6 (Phase 9)**: depende da US2.
 - **Polish (Phase 10)**: depende das histórias desejadas.
+- **Agent Card no Vercel (Phase 11)**: depende só da Foundational e da aprovação do D-08 e do
+  ADR-0012; não bloqueia nem é bloqueada pelas histórias. A T148 da US2 reaproveita a fábrica da
+  T169.
 
 ### User Story Dependencies
 
@@ -410,8 +458,9 @@ validação do ambiente.
 Setup → Foundational → US1
 US1 → US4, US3, US5           (podem andar em paralelo)
 US4 + US5 → US7
-US3 + US4 + US7 → US2 → US6
+US1 + US4 + US5 → US2 → US6   (US2 também exige ADR-0011, D-04 revisado e D-07 aprovados)
 histórias concluídas → Polish
+Foundational → Phase 11       (exige D-08 e ADR-0012 aprovados)
 ```
 
 ### Within Each User Story
@@ -429,6 +478,7 @@ histórias concluídas → Polish
   T039 e T040.
 - US1: todos os testes T044 a T060; domínio T061 a T069; T074, T078 a T082.
 - US4, US3 e US5 podem andar em paralelo depois da US1, com cuidado nos arquivos compartilhados.
+- US2: depois de T138, os testes T139 a T143 e as tarefas T145 e T148.
 
 ---
 
@@ -477,7 +527,7 @@ Task: "SessoesEndpoints em src/Api.Agente/Endpoints/SessoesEndpoints.cs"
 3. US4 → continuidade e contexto do usuário.
 4. US3 → perguntas sem valores inventados.
 5. US5 + US7 → recomendações e aprovação humana.
-6. US2 + US6 → A2A e simulador, contra o contrato v1 provisório (DP-27).
+6. US2 + US6 → A2A e simulador, contra o contrato SOFIA v1.0 (DP-27, ADR-0011).
 7. Polish → metas não funcionais, avaliação e quickstart.
 
 Cada incremento passa no CI e vai para a `dev` por PR; a `main` recebe a `dev` quando o conjunto
@@ -492,9 +542,10 @@ for publicado (ADR-0008).
 - **Adiados pelo D-05**: TS-031 (FR-052, ERR-004) e TS-042 (FR-035h, ERR-019). Voltam com o ADR da
   DP-10 e o fim do desvio.
 - **Dependências marcadas pelo Constitution Check**: identificação, aprovação e exposição dependem
-  do D-05 (T020, T036, T038, T042, T130 a T137, T143 a T145); a primeira chamada ao LLM com dados de
-  documento segue o ADR-0004 (T082 a T084); o adaptador A2A segue a proposta provisória da DP-27
-  (Phase 8 e Phase 9).
+  do D-05 (T020, T036, T038, T042, T130 a T137, T144, T146, T149 e T150); a primeira chamada ao LLM
+  com dados de documento segue o ADR-0004 (T082 a T084); o canal A2A segue o contrato SOFIA v1.0 e
+  depende do ADR-0011, da revisão do D-04 e do D-07 (Phase 8 e Phase 9); a publicação do card no
+  Vercel depende do D-08 e do ADR-0012 (Phase 11).
 - **Fontes oficiais**: nenhuma regra, layout, schema ou preço é presumido (P02); NFePHP e ACBr não
   são fontes. Os XMLs de teste e de exemplo são sintéticos.
 - Commits sem segredos, sem `.env` e sem o trailer `Co-authored-by: Cursor`; nada de push direto na

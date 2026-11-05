@@ -1,0 +1,23 @@
+# Envio ao Vercel só do necessário para o Dockerfile.vercel (D-08). Segredos e dados locais nunca saem.
+.env
+.env.*
+data/
+
+# Artefatos de build e IDE
+**/bin/
+**/obj/
+.vs/
+**/*.user
+**/TestResults/
+
+# Fora da imagem do Agent Card
+.git/
+.github/
+.cursor/
+.specify/
+docs/
+specs/
+tests/
+infra/
+src/Sofia.Simulator/
+docker-compose*.yml

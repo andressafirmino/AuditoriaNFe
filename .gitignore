@@ -13,3 +13,6 @@ TestResults/
 
 # Dados locais do Docker (checkpoints de aprovação e afins)
 /data/
+
+# Vínculo local com o projeto Vercel (D-08)
+.vercel

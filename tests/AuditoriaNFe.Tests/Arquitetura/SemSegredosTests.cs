@@ -13,7 +13,7 @@ public sealed partial class SemSegredosTests
 
     private static readonly HashSet<string> NomesSemExtensao = new(StringComparer.OrdinalIgnoreCase)
     {
-        "Dockerfile", ".env.example", ".editorconfig", ".gitignore", ".dockerignore",
+        "Dockerfile", "Dockerfile.vercel", ".env.example", ".editorconfig", ".gitignore", ".dockerignore", ".vercelignore",
     };
 
     private static readonly HashSet<string> DiretoriosIgnorados = new(StringComparer.OrdinalIgnoreCase)

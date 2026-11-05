@@ -1,5 +1,6 @@
 using Api.Agente.Documentacao;
 using Api.Agente.Erros;
+using Api.Agente.Hospedagem;
 using Api.Agente.Limites;
 using Api.Agente.Observabilidade;
 using Api.Agente.Seguranca;
@@ -14,6 +15,15 @@ var builder = WebApplication.CreateBuilder(args);
 
 GuardaDesvioD05.Verificar(builder.Environment, builder.Configuration);
 
+if (HospedagemOpcoes.LerModo(builder.Configuration) == ModoHospedagem.SomenteAgentCard)
+{
+    builder.Services.AdicionarSomenteAgentCard(builder.Configuration);
+    var appCard = builder.Build();
+    appCard.MapearSomenteAgentCard();
+    await appCard.RunAsync();
+    return;
+}
+
 builder.Services
     .AdicionarOpcoesAuditoria(builder.Configuration)
     .AdicionarComum()
@@ -21,7 +31,8 @@ builder.Services
     .AdicionarPersistenciaConsumo(builder.Configuration)
     .AdicionarIa(builder.Environment.EnvironmentName)
     .AdicionarObservabilidade(builder.Configuration)
-    .AdicionarLimitesHttp();
+    .AdicionarLimitesHttp()
+    .AdicionarCorsNavegador(builder.Configuration);
 
 builder.Services.ConfigureHttpJsonOptions(opcoes => OpcoesJsonContrato.Aplicar(opcoes.SerializerOptions));
 builder.Services.AddProblemDetails();
@@ -42,6 +53,7 @@ await MigracoesConsumo.AplicarSeHabilitadoAsync(app.Services);
 app.UseExceptionHandler();
 app.UsarDocumentacaoApi();
 app.UseRouting();
+app.UseCors();
 app.UseRateLimiter();
 
 app.MapHealthChecks("/health/live", new HealthCheckOptions { Predicate = _ => false });

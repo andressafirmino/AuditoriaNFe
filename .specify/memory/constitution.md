@@ -854,8 +854,9 @@ necessário, atualizadas.
 | 1.1.0 | 2026-10-29 | Regras de repositório GitHub, contêineres Docker, implantação, documentação interativa da API e testes de integração com bancos reais | Nenhum (não havia especificações) |
 | 2.0.0 | 2026-11-04 | Microsoft Agent Framework no lugar do Semantic Kernel (redefinição incompatível da seção 3.1); abstrações do framework permitidas na Aplicação; MongoDB para memória e contexto do usuário (resolve DP-01); contexto do usuário próprio do agente (P15, seção 4.7); autenticação do chamador com usuário informado por chamador confiável (seção 5.2); DP-03 ajustada; DP-27 criada | `001-agente-auditoria-nfe`: os desvios D-01 e D-02 do `plan.md` deixam de existir; `spec.md`, `plan.md`, `research.md`, `data-model.md` e contratos DEVEM ser atualizados para contexto do usuário, autenticação do chamador e DP-27 |
 | 2.1.0 | 2026-11-04 | Resolução da DP-20 (aprovadores, registro da aprovação e local dos ADRs); formato do registro de aprovação de desvios (seção 8.3) | `001-agente-auditoria-nfe`: o `plan.md` DEVE registrar a aprovação dos desvios e dos ADRs; a autoaprovação de PR, contrária à seção 5.3 e à Definition of Done, DEVE ser registrada como desvio |
+| 2.2.0 | 2026-11-05 | Resolução da DP-27: o contrato com o orquestrador SOFIA é o contrato SOFIA v1.0 da INFIS (A2A v0.3.x, `message/send`, solicitação com documentos em texto, resultado em Artifact de Task). A credencial de serviço continua na DP-10 | `001-agente-auditoria-nfe`: `contracts/sofia-a2a.md` substituído pelo contrato SOFIA v1.0 com JSON Schemas; `spec.md`, `plan.md`, `research.md`, `data-model.md`, `tasks.md` e `quickstart.md` atualizados; ADR-0011 proposto, substituindo o ADR-0007; desvio D-04 revisado; novo desvio D-07 (seção 3.1: hospedagem A2A pelo servidor do SDK A2A, e não pelo MAF), pendente de aprovação |
 
-**Versão**: 2.1.0 | **Ratificada em**: 2026-10-29 | **Última alteração**: 2026-11-04
+**Versão**: 2.2.0 | **Ratificada em**: 2026-10-29 | **Última alteração**: 2026-11-05
 
 ## 9. Decisões pendentes
 
@@ -889,7 +890,6 @@ resolução na etapa indicada.
 | DP-24 | Política de continuidade do fluxo após falha parcial nas etapas 3 a 6                                       | Especificação da funcionalidade de análise                  |
 | DP-25 | Plataforma de implantação das APIs e dependências, atendendo à seção 3.5 (a Vercel não oferece runtime oficial para .NET e só PODE ser considerada para um eventual frontend) | ADR antes da primeira implantação |
 | DP-26 | Ferramenta de CI/CD, checks obrigatórios, regras de proteção de branch e registro de imagens de contêiner | Plano técnico inicial |
-| DP-27 | Contrato definitivo com o orquestrador SOFIA: forma de envio dos XMLs, metadados (usuário, conversa, correlação), credencial de serviço e formato da resposta. Até a resolução, o contrato A2A é uma proposta versionada provisória | Acordo com o responsável pela SOFIA, antes da integração em produção |
 
 ### 9.1 Decisões resolvidas
 
@@ -897,5 +897,6 @@ resolução na etapa indicada.
 | ----- | ------------------------------------------------------------- | ------ |
 | DP-01 | MongoDB para a memória conversacional e o contexto do usuário (seção 3.1); a decisão DEVE estar registrada em ADR antes da implementação | 2.0.0 |
 | DP-20 | Aprovadora única da constitution, dos desvios, dos ADRs e dos PRs: Andressa Firmino (dona do projeto), enquanto for a única mantenedora. A aprovação é registrada como "Aprovado por <nome>, <data>" no ADR, no "Complexity Tracking" ou no histórico desta constitution, e pela aprovação do PR. ADRs ficam em `docs/adr/`, um arquivo por decisão (`NNNN-titulo.md`), com situação (Proposto, Aprovado ou Substituído). A entrada de outra pessoa mantenedora DEVE reabrir esta decisão | 2.1.0 |
+| DP-27 | Contrato com o orquestrador SOFIA: contrato SOFIA v1.0 da INFIS. A SOFIA envia por A2A v0.3.x (`message/send`) uma solicitação com `versaoContrato`, `idExecucao`, `idSolicitacao`, nome do usuário, pergunta e documentos já convertidos em texto, e o agente devolve uma Task concluída com um Artifact contendo o resultado (status `concluido`, `parcial` ou `erro`, análise, achados com evidências e observações). A credencial de serviço continua na DP-10; até o ADR da DP-10, a integração só ocorre em ambiente local de testes. A decisão DEVE estar registrada em ADR antes da implementação | 2.2.0 |
 
 
