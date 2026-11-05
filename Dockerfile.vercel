@@ -1,0 +1,31 @@
+# Imagem do modo SomenteAgentCard para o Container runtime do Vercel (FR-052f, desvio D-08,
+# ADR-0012): só o Agent Card e /health/live, sem banco, IA nem rotas de análise. Contexto de build:
+# raiz do repositório. Sem segredos; no projeto Vercel, só PORT e A2A__UrlPublica (research R-35).
+
+FROM mcr.microsoft.com/dotnet/sdk:10.0.403 AS build
+WORKDIR /src
+
+COPY global.json Directory.Build.props Directory.Packages.props ./
+COPY src/Api.Agente/Api.Agente.csproj src/Api.Agente/
+COPY src/AuditoriaNFe.Application/AuditoriaNFe.Application.csproj src/AuditoriaNFe.Application/
+COPY src/AuditoriaNFe.Domain/AuditoriaNFe.Domain.csproj src/AuditoriaNFe.Domain/
+COPY src/AuditoriaNFe.Infrastructure/AuditoriaNFe.Infrastructure.csproj src/AuditoriaNFe.Infrastructure/
+RUN dotnet restore src/Api.Agente/Api.Agente.csproj
+
+COPY src/Api.Agente/ src/Api.Agente/
+COPY src/AuditoriaNFe.Application/ src/AuditoriaNFe.Application/
+COPY src/AuditoriaNFe.Domain/ src/AuditoriaNFe.Domain/
+COPY src/AuditoriaNFe.Infrastructure/ src/AuditoriaNFe.Infrastructure/
+RUN dotnet publish src/Api.Agente/Api.Agente.csproj -c Release -o /app/publish --no-restore -p:UseAppHost=false
+
+FROM mcr.microsoft.com/dotnet/aspnet:10.0.14 AS final
+WORKDIR /app
+ENV ASPNETCORE_ENVIRONMENT=Production \
+    Hospedagem__Modo=SomenteAgentCard
+EXPOSE 8080
+
+COPY --from=build --chown=$APP_UID /app/publish .
+
+USER $APP_UID
+# O Vercel encaminha o tráfego para a porta definida em PORT no projeto.
+ENTRYPOINT ["/bin/sh", "-c", "ASPNETCORE_HTTP_PORTS=\"${PORT:-8080}\" exec dotnet Api.Agente.dll"]

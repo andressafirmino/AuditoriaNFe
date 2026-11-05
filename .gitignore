@@ -1,0 +1,18 @@
+# Build e IDE (.NET)
+bin/
+obj/
+.vs/
+*.user
+*.suo
+TestResults/
+
+# Segredos: nunca versionar (constitution 5.1); só o modelo .env.example
+.env
+.env.*
+!.env.example
+
+# Dados locais do Docker (checkpoints de aprovação e afins)
+/data/
+
+# Vínculo local com o projeto Vercel (D-08)
+.vercel

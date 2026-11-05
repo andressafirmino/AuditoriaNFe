@@ -1,0 +1,61 @@
+name: CI
+
+# ADR-0008: build com avisos como erro e testes em todo PR para dev e main. Sem chave da OpenAI:
+# a avaliação com o modelo real (Categoria=Avaliacao) e a carga (Categoria=Carga) ficam fora do CI.
+
+on:
+  pull_request:
+    branches: [dev, main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  DOTNET_NOLOGO: "true"
+  DOTNET_CLI_TELEMETRY_OPTOUT: "true"
+
+jobs:
+  build-test:
+    name: build-test
+    # Kernel 6.8: o mongo:8.0.x encerra na inicialização nos kernels 7.0.0-x das imagens ubuntu-24.04
+    # e ubuntu-26.04 (SERVER-125742, SERVER-136848). Reavaliar quando o MongoDB corrigir a verificação.
+    runs-on: ubuntu-22.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-dotnet@v6
+        with:
+          global-json-file: global.json
+
+      - name: Restore
+        run: dotnet restore AgenteAuditoriaNFe.slnx
+
+      - name: Build
+        run: dotnet build AgenteAuditoriaNFe.slnx --configuration Release --no-restore
+
+      # Docker do runner atende aos testes de integração com Testcontainers.
+      - name: Test
+        run: >
+          dotnet test --project tests/AuditoriaNFe.Tests
+          --configuration Release --no-build
+          --filter-not-trait "Categoria=Avaliacao"
+          --filter-not-trait "Categoria=Carga"
+
+  build-imagem:
+    name: build-imagem
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Build da imagem do Api.Agente
+        run: docker build --file src/Api.Agente/Dockerfile --tag auditoria-nfe-api-agente:ci .
+
+      - name: Build da imagem do Agent Card para o Vercel (D-08)
+        run: docker build --file Dockerfile.vercel --tag auditoria-nfe-agent-card:ci .

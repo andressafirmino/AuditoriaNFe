@@ -1,0 +1,838 @@
+openapi: 3.1.0
+info:
+  title: AgenteAuditoriaNFe — canal direto (REST v1)
+  version: 1.0.0
+  description: |
+    Contrato de referência do canal direto do Api.Agente (feature 001-agente-auditoria-nfe).
+    O documento gerado em tempo de execução por Microsoft.AspNetCore.OpenApi DEVE ser equivalente
+    a este arquivo (teste de contrato).
+
+    Versão 1 sem autenticação (desvio temporário D-05): o chamador informa o usuário e a sua própria
+    identificação nos cabeçalhos X-Usuario-Id e X-Chamador-Id, que são registrados e usados no
+    isolamento, sem verificação. Sem eles, valem "anonimo" e "nao-informado"; o usuário "anonimo"
+    não tem contexto do usuário (FR-052c). O agente só pode ser executado em ambiente local de
+    testes (FR-052b).
+
+    Mensagens em português do Brasil. Erros seguem o objeto Erro (constitution 4.4).
+servers:
+  - url: http://localhost:5310
+    description: Ambiente local (docker compose); porta publicada só em 127.0.0.1
+security: []
+tags:
+  - name: Execucoes
+    description: Análise de XMLs de NF-e e perguntas
+  - name: Sessoes
+    description: Encerramento de sessões
+  - name: Recomendacoes
+    description: Consulta e decisão humana sobre recomendações sensíveis
+  - name: ContextoUsuario
+    description: Consulta, correção e exclusão do contexto do usuário
+  - name: Saude
+    description: Verificações de saúde, sem dados
+paths:
+  /api/v1/execucoes:
+    post:
+      tags: [Execucoes]
+      operationId: criarExecucao
+      summary: Analisar lote, perguntar sobre a base ou ambos
+      description: |
+        FR-001 a FR-042. Ao menos a pergunta ou um arquivo é obrigatório (ERR-001). Os limites de
+        tamanho total e de quantidade são validados antes de qualquer análise (ERR-002, ERR-003).
+        Erros por arquivo (ERR-008 a ERR-012, ERR-023) aparecem no parecer, com HTTP 200.
+      parameters:
+        - $ref: '#/components/parameters/UsuarioId'
+        - $ref: '#/components/parameters/ChamadorId'
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              additionalProperties: false
+              properties:
+                pergunta:
+                  type: string
+                  maxLength: 4000
+                  description: Pergunta em linguagem natural; tratada como dado (FR-053).
+                arquivos:
+                  type: array
+                  items:
+                    type: string
+                    format: binary
+                  description: XMLs de NF-e; o tipo é verificado pelo conteúdo (FR-006).
+                sessaoId:
+                  type: string
+                  format: uuid
+                  description: Continuidade de sessão (FR-036).
+                correlacaoId:
+                  $ref: '#/components/schemas/CorrelacaoId'
+            encoding:
+              arquivos:
+                contentType: application/xml, text/xml
+      responses:
+        '200':
+          description: Execução concluída (inclusive "Inconclusiva") ou falha por tempo (ERR-016, estado Falhou).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnvelopeV1'
+        '400':
+          description: ERR-001, ERR-003 ou ERR-007; estado Rejeitada.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnvelopeV1'
+        '404':
+          description: ERR-005 (sessão inexistente ou de outro usuário).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnvelopeV1'
+        '410':
+          description: ERR-006 (sessão expirada ou encerrada).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnvelopeV1'
+        '413':
+          description: ERR-002 (tamanho total acima do limite), com limite e total recebido.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnvelopeV1'
+        '429':
+          description: ERR-024 (limite de taxa ou de concorrência atingido); estado Rejeitada, sem análise.
+          headers:
+            Retry-After:
+              $ref: '#/components/headers/RetryAfter'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnvelopeV1'
+        '503':
+          description: ERR-025 (armazenamento de sessões indisponível); estado Rejeitada, sem análise parcial.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnvelopeV1'
+  /api/v1/execucoes/{execucaoId}:
+    get:
+      tags: [Execucoes]
+      operationId: obterExecucao
+      summary: Obter o envelope de uma execução, com recomendações por estado
+      description: FR-035g, NFR-008. Só a mesma identificação que criou a sessão tem acesso.
+      parameters:
+        - $ref: '#/components/parameters/UsuarioId'
+        - $ref: '#/components/parameters/ChamadorId'
+        - name: execucaoId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Envelope da execução.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnvelopeV1'
+        '404':
+          description: Execução não encontrada para esta identificação.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErroResposta'
+  /api/v1/sessoes/{sessaoId}:
+    delete:
+      tags: [Sessoes]
+      operationId: encerrarSessao
+      summary: Encerrar uma sessão
+      description: FR-041. Recomendações pendentes passam a Indisponivel (FR-035i).
+      parameters:
+        - $ref: '#/components/parameters/UsuarioId'
+        - $ref: '#/components/parameters/ChamadorId'
+        - name: sessaoId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '204':
+          description: Sessão encerrada.
+        '404':
+          description: ERR-005.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErroResposta'
+  /api/v1/recomendacoes/pendentes:
+    get:
+      tags: [Recomendacoes]
+      operationId: listarRecomendacoesPendentes
+      summary: Listar recomendações sensíveis pendentes de aprovação
+      description: |
+        FR-035d. Lista as pendências das sessões do mesmo chamador, com conteúdo, achados
+        vinculados, execução e sessão de origem. Na v1 não há papel de aprovador (D-05).
+      parameters:
+        - $ref: '#/components/parameters/UsuarioId'
+        - $ref: '#/components/parameters/ChamadorId'
+      responses:
+        '200':
+          description: Pendências.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/RecomendacaoPendente'
+  /api/v1/recomendacoes/{recomendacaoId}/aprovacao:
+    post:
+      tags: [Recomendacoes]
+      operationId: aprovarRecomendacao
+      summary: Aprovar uma recomendação sensível
+      description: |
+        FR-035e, FR-035f. O aprovador registrado é o usuário informado em X-Usuario-Id, sem
+        verificação (D-05). Usuário "anonimo" não pode decidir (ERR-007).
+      parameters:
+        - $ref: '#/components/parameters/UsuarioId'
+        - $ref: '#/components/parameters/ChamadorId'
+        - $ref: '#/components/parameters/RecomendacaoId'
+      responses:
+        '200':
+          description: Decisão registrada.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResultadoDecisao'
+        '400':
+          description: ERR-007 (aprovador não identificado).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErroResposta'
+        '409':
+          description: ERR-020 (já decidida ou inexistente).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErroResposta'
+        '429':
+          description: ERR-024 (limite de taxa atingido); decisão não registrada.
+          headers:
+            Retry-After:
+              $ref: '#/components/headers/RetryAfter'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErroResposta'
+        '503':
+          description: ERR-022 (falha ao gravar ou ler o checkpoint); a recomendação continua pendente.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErroResposta'
+  /api/v1/recomendacoes/{recomendacaoId}/rejeicao:
+    post:
+      tags: [Recomendacoes]
+      operationId: rejeitarRecomendacao
+      summary: Rejeitar uma recomendação sensível, com justificativa
+      description: FR-035e, ERR-021. Mesmas regras de identificação da aprovação.
+      parameters:
+        - $ref: '#/components/parameters/UsuarioId'
+        - $ref: '#/components/parameters/ChamadorId'
+        - $ref: '#/components/parameters/RecomendacaoId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [justificativa]
+              properties:
+                justificativa:
+                  type: string
+                  minLength: 1
+                  maxLength: 2000
+      responses:
+        '200':
+          description: Decisão registrada.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResultadoDecisao'
+        '400':
+          description: ERR-021 (sem justificativa) ou ERR-007 (aprovador não identificado).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErroResposta'
+        '409':
+          description: ERR-020.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErroResposta'
+        '429':
+          description: ERR-024.
+          headers:
+            Retry-After:
+              $ref: '#/components/headers/RetryAfter'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErroResposta'
+        '503':
+          description: ERR-022.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErroResposta'
+  /api/v1/contexto-usuario:
+    get:
+      tags: [ContextoUsuario]
+      operationId: obterContextoUsuario
+      summary: Consultar o contexto do usuário
+      description: FR-059. Isolado por usuário e chamador (FR-056). Usuário "anonimo" não tem contexto.
+      parameters:
+        - $ref: '#/components/parameters/UsuarioId'
+        - $ref: '#/components/parameters/ChamadorId'
+      responses:
+        '200':
+          description: Contexto do usuário.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ContextoUsuario'
+        '404':
+          description: Não há contexto para esta identificação (inclusive usuário "anonimo" ou contexto expirado).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErroResposta'
+    delete:
+      tags: [ContextoUsuario]
+      operationId: excluirContextoUsuario
+      summary: Excluir todo o contexto do usuário
+      description: FR-059. As execuções seguintes começam sem contexto (TS-056).
+      parameters:
+        - $ref: '#/components/parameters/UsuarioId'
+        - $ref: '#/components/parameters/ChamadorId'
+      responses:
+        '204':
+          description: Contexto excluído (ou inexistente).
+  /api/v1/contexto-usuario/preferencias:
+    put:
+      tags: [ContextoUsuario]
+      operationId: declararPreferencias
+      summary: Declarar ou corrigir as preferências do usuário
+      description: FR-055a (item 3), FR-055b, FR-059. Declaração explícita; renova o prazo do contexto (FR-060).
+      parameters:
+        - $ref: '#/components/parameters/UsuarioId'
+        - $ref: '#/components/parameters/ChamadorId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PreferenciasEntrada'
+      responses:
+        '200':
+          description: Contexto atualizado.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ContextoUsuario'
+        '400':
+          description: ERR-007 (usuário não identificado ou valor fora da lista).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErroResposta'
+  /api/v1/contexto-usuario/cnpjs/{cnpj}:
+    delete:
+      tags: [ContextoUsuario]
+      operationId: removerCnpjDoContexto
+      summary: Corrigir o contexto removendo um CNPJ auditado
+      description: FR-059.
+      parameters:
+        - $ref: '#/components/parameters/UsuarioId'
+        - $ref: '#/components/parameters/ChamadorId'
+        - name: cnpj
+          in: path
+          required: true
+          schema:
+            type: string
+            pattern: '^[0-9A-Z]{12}[0-9]{2}$'
+        - name: papel
+          in: query
+          required: false
+          description: Sem papel, remove o CNPJ nos dois papéis.
+          schema:
+            $ref: '#/components/schemas/PapelCnpj'
+      responses:
+        '204':
+          description: Removido (ou inexistente).
+  /api/v1/contexto-usuario/achados-recorrentes/{chave}:
+    delete:
+      tags: [ContextoUsuario]
+      operationId: removerAchadoRecorrente
+      summary: Corrigir o contexto removendo um achado recorrente
+      description: FR-059.
+      parameters:
+        - $ref: '#/components/parameters/UsuarioId'
+        - $ref: '#/components/parameters/ChamadorId'
+        - name: chave
+          in: path
+          required: true
+          schema:
+            type: string
+            maxLength: 64
+      responses:
+        '204':
+          description: Removido (ou inexistente).
+  /health/live:
+    get:
+      tags: [Saude]
+      operationId: saudeProcesso
+      summary: Processo ativo
+      responses:
+        '200':
+          description: Saudável, sem dados.
+  /health/ready:
+    get:
+      tags: [Saude]
+      operationId: saudeDependencias
+      summary: MongoDB, PostgreSQL, diretório de checkpoints, schemas e catálogos prontos
+      responses:
+        '200':
+          description: Pronto.
+        '503':
+          description: Alguma dependência indisponível; sem detalhes internos.
+components:
+  headers:
+    RetryAfter:
+      description: Segundos até o fim da janela de limitação de taxa (LimiteTaxa:Janela).
+      schema:
+        type: integer
+        minimum: 1
+  parameters:
+    UsuarioId:
+      name: X-Usuario-Id
+      in: header
+      required: false
+      description: Identificador do usuário final, informado pelo chamador e não verificado (D-05). Ausente → "anonimo".
+      schema:
+        $ref: '#/components/schemas/Identificador'
+    ChamadorId:
+      name: X-Chamador-Id
+      in: header
+      required: false
+      description: Identificação do sistema chamador, não verificada (D-05). Ausente → "nao-informado".
+      schema:
+        $ref: '#/components/schemas/Identificador'
+    RecomendacaoId:
+      name: recomendacaoId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+  schemas:
+    Identificador:
+      type: string
+      minLength: 1
+      maxLength: 128
+      pattern: '^[A-Za-z0-9._:@-]+$'
+    CorrelacaoId:
+      type: string
+      maxLength: 128
+      pattern: '^[A-Za-z0-9._:-]+$'
+    Severidade:
+      type: string
+      enum: [Alta, Media, Baixa, Informativa]
+    Categoria:
+      type: string
+      enum: [ErroEstrutural, InconsistenciaNegocio, IndicioIa, AusenciaEvidencias, FalhaTecnica]
+    EstadoExecucao:
+      type: string
+      enum: [Recebida, EmProcessamento, Concluida, Falhou, Rejeitada]
+    EstadoRecomendacao:
+      type: string
+      enum: [Liberada, PendenteAprovacao, Aprovada, Rejeitada, Indisponivel]
+    PapelCnpj:
+      type: string
+      enum: [Emitente, Destinatario]
+    Erro:
+      type: object
+      additionalProperties: false
+      required: [codigo, mensagem]
+      properties:
+        codigo:
+          type: string
+          pattern: '^ERR-[0-9]{3}$'
+        mensagem:
+          type: string
+          description: Mensagem em português do Brasil, sem detalhes internos.
+        arquivo:
+          type: [string, 'null']
+        detalhes:
+          type: [object, 'null']
+          description: Dados do erro, por exemplo limiteBytes e totalRecebidoBytes no ERR-002.
+    ErroResposta:
+      type: object
+      additionalProperties: false
+      required: [erro]
+      properties:
+        execucaoId:
+          type: [string, 'null']
+          format: uuid
+        erro:
+          $ref: '#/components/schemas/Erro'
+    Etapa:
+      type: object
+      additionalProperties: false
+      required: [numero, nome, estado]
+      properties:
+        numero:
+          type: integer
+          minimum: 1
+          maximum: 9
+        nome:
+          type: string
+        estado:
+          type: string
+          enum: [Executada, Falhou, NaoAplicavel, NaoExecutada]
+        justificativa:
+          type: [string, 'null']
+        inicioEm:
+          type: [string, 'null']
+          format: date-time
+        fimEm:
+          type: [string, 'null']
+          format: date-time
+    Evidencia:
+      type: object
+      required: [tipo]
+      properties:
+        tipo:
+          type: string
+          enum: [CampoXml, RegraCatalogo, TrechoManual, Calculo]
+        chaveAcesso: { type: [string, 'null'] }
+        caminho: { type: [string, 'null'] }
+        valor: { type: [string, 'null'] }
+        regraId: { type: [string, 'null'] }
+        versaoRegra: { type: [integer, 'null'] }
+        versaoCatalogo: { type: [string, 'null'] }
+        chunkId: { type: [string, 'null'] }
+        documento: { type: [string, 'null'] }
+        versao: { type: [string, 'null'] }
+        trecho: { type: [string, 'null'] }
+        calculoId: { type: [string, 'null'], format: uuid }
+    Achado:
+      type: object
+      required: [id, categoria, severidade, origem, descricao]
+      properties:
+        id: { type: string, format: uuid }
+        categoria: { $ref: '#/components/schemas/Categoria' }
+        severidade: { $ref: '#/components/schemas/Severidade' }
+        origem:
+          type: string
+          enum: [Deterministica, IA, Sistema]
+        arquivo: { type: [string, 'null'] }
+        chaveAcesso: { type: [string, 'null'] }
+        campo: { type: [string, 'null'] }
+        linha: { type: [integer, 'null'] }
+        posicao: { type: [integer, 'null'] }
+        item: { type: [integer, 'null'] }
+        valorInformado: { type: [string, 'null'] }
+        valorEsperado: { type: [string, 'null'] }
+        descricao: { type: string }
+        regraId: { type: [string, 'null'] }
+        versaoRegra: { type: [integer, 'null'] }
+        pacoteSchema: { type: [string, 'null'] }
+        evidencias:
+          type: array
+          items: { $ref: '#/components/schemas/Evidencia' }
+    DocumentoParecer:
+      type: object
+      description: Situação de cada arquivo no parecer (FR-010d, FR-010f).
+      required: [arquivo, validacaoLayout, validacaoConteudo]
+      properties:
+        arquivo: { type: string }
+        chaveAcesso: { type: [string, 'null'] }
+        dataReferencia: { type: [string, 'null'], format: date }
+        origemDataReferencia:
+          type: [string, 'null']
+          enum: [dhRecbto, dhEmi, null]
+        pacoteAplicado: { type: [string, 'null'] }
+        pacotesTentados:
+          type: array
+          items: { type: string }
+        emConvivencia: { type: boolean }
+        validacaoLayout:
+          type: string
+          description: Realizada ou "NaoRealizada — <motivo>".
+        validacaoConteudo:
+          type: string
+        duplicadoDe: { type: [string, 'null'] }
+    ValorCitado:
+      type: object
+      required: [valor]
+      properties:
+        valor: { type: string, pattern: '^-?[0-9]+(\.[0-9]+)?$' }
+        calculoId: { type: [string, 'null'], format: uuid }
+        chaveAcesso: { type: [string, 'null'] }
+        caminho: { type: [string, 'null'] }
+    Recomendacao:
+      type: object
+      description: Visão por estado; texto só em Liberada e Aprovada (FR-035c, FR-035g).
+      required: [id, estado, rotulo]
+      properties:
+        id: { type: string, format: uuid }
+        estado: { $ref: '#/components/schemas/EstadoRecomendacao' }
+        rotulo:
+          type: string
+          const: Recomendação demonstrativa
+        aviso: { type: [string, 'null'] }
+        texto: { type: [string, 'null'] }
+        achadosVinculados:
+          type: array
+          items: { type: string, format: uuid }
+    RecomendacaoPendente:
+      type: object
+      required: [id, execucaoId, sessaoId, texto, achadosVinculados, motivosSensibilidade]
+      properties:
+        id: { type: string, format: uuid }
+        execucaoId: { type: string, format: uuid }
+        sessaoId: { type: string, format: uuid }
+        texto: { type: string }
+        achadosVinculados:
+          type: array
+          items: { $ref: '#/components/schemas/Achado' }
+        motivosSensibilidade:
+          type: array
+          items:
+            type: string
+            enum: [AchadoSeveridadeAlta, MencionaValores, MencionaTributos]
+    ResultadoDecisao:
+      type: object
+      required: [recomendacaoId, estado, aprovadorId, aprovadorVerificado, decididoEm]
+      properties:
+        recomendacaoId: { type: string, format: uuid }
+        estado:
+          type: string
+          enum: [Aprovada, Rejeitada]
+        aprovadorId: { type: string }
+        aprovadorVerificado:
+          type: boolean
+          description: Sempre false enquanto vigorar o D-05.
+        decididoEm: { type: string, format: date-time }
+    Parecer:
+      type: object
+      required: [resumoQuantitativo, resultadoGeral, documentos, achados, limitacoes, validacoesNaoRealizadas, revisaoHumana, recomendacoes, integracaoMcp, resumoTextual]
+      properties:
+        resumoQuantitativo:
+          type: object
+          required: [recebidos, analisados, comAchados, naoAnalisados]
+          properties:
+            recebidos: { type: integer, minimum: 0 }
+            analisados: { type: integer, minimum: 0 }
+            comAchados: { type: integer, minimum: 0 }
+            naoAnalisados: { type: integer, minimum: 0 }
+        resultadoGeral:
+          type: string
+          enum: [SemInconsistencias, ComInconsistencias, Inconclusiva]
+        documentos:
+          type: array
+          items: { $ref: '#/components/schemas/DocumentoParecer' }
+        achados:
+          type: array
+          items: { $ref: '#/components/schemas/Achado' }
+        limitacoes:
+          type: array
+          items: { type: string }
+        validacoesNaoRealizadas:
+          type: array
+          items:
+            type: object
+            required: [arquivo, validacao, motivo]
+            properties:
+              arquivo: { type: string }
+              validacao:
+                type: string
+                enum: [Layout, Conteudo]
+              motivo: { type: string }
+        revisaoHumana:
+          type: object
+          required: [necessaria, motivos]
+          properties:
+            necessaria: { type: boolean }
+            motivos:
+              type: array
+              items: { type: string }
+        recomendacoes:
+          type: array
+          items: { $ref: '#/components/schemas/Recomendacao' }
+        integracaoMcp:
+          type: object
+          required: [habilitada]
+          properties:
+            habilitada: { type: boolean }
+        resumoTextual: { type: string }
+        versoes:
+          type: object
+          properties:
+            manifestoSchemas: { type: string }
+            catalogoRegras: { type: string }
+    RespostaPergunta:
+      type: object
+      required: [texto, valoresCitados, documentosExcluidos]
+      properties:
+        texto: { type: string }
+        valoresCitados:
+          type: array
+          items: { $ref: '#/components/schemas/ValorCitado' }
+        documentosExcluidos:
+          type: array
+          items:
+            type: object
+            required: [chaveAcesso, motivo]
+            properties:
+              chaveAcesso: { type: string }
+              motivo: { type: string }
+        informacaoIndisponivel: { type: boolean }
+        foraDeEscopo: { type: boolean }
+    Consumo:
+      type: object
+      properties:
+        tokensEntrada: { type: [integer, 'null'] }
+        tokensSaida: { type: [integer, 'null'] }
+        custoEstimado: { type: [string, 'null'], description: 'Decimal em texto, 8 casas.' }
+        moeda: { type: [string, 'null'] }
+        origem:
+          type: [string, 'null']
+          enum: [InformadoProvedor, EstimadoSistema, null]
+        registroCompleto: { type: boolean }
+    EnvelopeV1:
+      type: object
+      description: Envelope de resposta v1, igual nos dois canais (data-model §16).
+      required: [versaoEnvelope, versaoContratoIa, execucaoId, estado, dataHora, canal, usuarioIdentificado, etapas]
+      properties:
+        versaoEnvelope:
+          type: string
+          const: '1.0'
+        versaoContratoIa:
+          type: string
+          const: '1.0'
+        execucaoId: { type: string, format: uuid }
+        sessaoId: { type: [string, 'null'], format: uuid }
+        correlacaoId: { type: [string, 'null'] }
+        estado: { $ref: '#/components/schemas/EstadoExecucao' }
+        dataHora: { type: string, format: date-time }
+        canal:
+          type: string
+          enum: [Direto, A2A]
+        usuarioIdentificado:
+          type: boolean
+          description: false para o usuário "anonimo" (FR-052c).
+        etapas:
+          type: array
+          items: { $ref: '#/components/schemas/Etapa' }
+        parecer:
+          oneOf:
+            - $ref: '#/components/schemas/Parecer'
+            - type: 'null'
+        resposta:
+          oneOf:
+            - $ref: '#/components/schemas/RespostaPergunta'
+            - type: 'null'
+        recomendacoes:
+          type: [array, 'null']
+          items: { $ref: '#/components/schemas/Recomendacao' }
+        erro:
+          oneOf:
+            - $ref: '#/components/schemas/Erro'
+            - type: 'null'
+        metadados:
+          type: object
+          properties:
+            modelo: { type: [string, 'null'] }
+            duracaoMs: { type: integer }
+            consumo: { $ref: '#/components/schemas/Consumo' }
+            versoes:
+              type: object
+              additionalProperties: { type: string }
+    TributoInteresse:
+      type: string
+      enum: [ICMS, ICMS-ST, FCP, IPI, PIS, COFINS, ISSQN, IBS, CBS, IS]
+    PreferenciasEntrada:
+      type: object
+      additionalProperties: false
+      required: [nivelDetalhe, tributosInteresse]
+      properties:
+        nivelDetalhe:
+          type: string
+          enum: [Resumido, Detalhado]
+        tributosInteresse:
+          type: array
+          uniqueItems: true
+          items: { $ref: '#/components/schemas/TributoInteresse' }
+    Origem:
+      type: object
+      required: [tipo, registradoEm]
+      properties:
+        tipo:
+          type: string
+          enum: [Execucao, DeclaracaoUsuario]
+        execucaoId: { type: [string, 'null'], format: uuid }
+        sessaoId: { type: [string, 'null'], format: uuid }
+        registradoEm: { type: string, format: date-time }
+    ContextoUsuario:
+      type: object
+      description: Contexto próprio da auditoria (FR-055a); nunca contém CPF, nomes, endereços, valores ou texto livre.
+      required: [usuarioId, chamadorId, cnpjsAuditados, achadosRecorrentes, ultimaAtividadeEm, expiraEm]
+      properties:
+        usuarioId: { type: string }
+        chamadorId: { type: string }
+        cnpjsAuditados:
+          type: array
+          items:
+            type: object
+            required: [cnpj, papel, quantidadeDocumentos, ultimaAuditoriaEm, origem]
+            properties:
+              cnpj: { type: string, pattern: '^[0-9A-Z]{12}[0-9]{2}$' }
+              papel: { $ref: '#/components/schemas/PapelCnpj' }
+              quantidadeDocumentos: { type: integer, minimum: 1 }
+              ultimaAuditoriaEm: { type: string, format: date-time }
+              origem: { $ref: '#/components/schemas/Origem' }
+        achadosRecorrentes:
+          type: array
+          items:
+            type: object
+            required: [chave, categoria, frequencia, ultimaOcorrenciaEm, origem]
+            properties:
+              chave: { type: string }
+              categoria:
+                type: string
+                enum: [ErroEstrutural, InconsistenciaNegocio]
+              frequencia: { type: integer, minimum: 1 }
+              ultimaOcorrenciaEm: { type: string, format: date-time }
+              origem: { $ref: '#/components/schemas/Origem' }
+        preferencias:
+          oneOf:
+            - type: object
+              required: [nivelDetalhe, tributosInteresse, origem]
+              properties:
+                nivelDetalhe:
+                  type: string
+                  enum: [Resumido, Detalhado]
+                tributosInteresse:
+                  type: array
+                  items: { $ref: '#/components/schemas/TributoInteresse' }
+                origem: { $ref: '#/components/schemas/Origem' }
+            - type: 'null'
+        ultimaAtividadeEm: { type: string, format: date-time }
+        expiraEm: { type: string, format: date-time }

@@ -1,0 +1,58 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:infis:sofia:resultado-analise:1.0",
+  "title": "ResultadoAnaliseSofia v1.0",
+  "description": "Resultado devolvido pelo agente em TextPart do Artifact 'analise-sofia-v1' de uma Task A2A concluída (contracts/sofia-a2a.md §5.2). idDocumentos só referencia IDs da solicitação (validado no teste de contrato).",
+  "type": "object",
+  "required": ["versaoContrato", "idExecucao", "idSolicitacao", "agente", "status", "analise", "achados"],
+  "properties": {
+    "versaoContrato": { "const": "1.0" },
+    "idExecucao": { "type": "string", "format": "uuid" },
+    "idSolicitacao": { "type": "string", "format": "uuid" },
+    "agente": {
+      "type": "object",
+      "required": ["idAgente", "nome"],
+      "properties": {
+        "idAgente": { "type": "string", "minLength": 1 },
+        "nome": { "type": "string", "minLength": 1 }
+      }
+    },
+    "status": { "enum": ["concluido", "parcial", "erro"] },
+    "analise": { "type": "string", "minLength": 1 },
+    "achados": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["idAchado", "descricao", "idDocumentos", "evidencias"],
+        "properties": {
+          "idAchado": { "type": "string", "minLength": 1 },
+          "descricao": { "type": "string", "minLength": 1 },
+          "idDocumentos": { "type": "array", "items": { "type": "string", "minLength": 1 } },
+          "evidencias": { "type": "array", "items": { "type": "string", "minLength": 1 } },
+          "severidade": { "enum": ["baixa", "media", "alta", "critica"] }
+        }
+      }
+    },
+    "observacoes": { "type": "array", "items": { "type": "string" } },
+    "erro": {
+      "oneOf": [
+        { "type": "null" },
+        {
+          "type": "object",
+          "required": ["codigo", "mensagem"],
+          "properties": {
+            "codigo": { "type": "string", "pattern": "^ERR-[0-9]{3}$" },
+            "mensagem": { "type": "string", "minLength": 1 }
+          }
+        }
+      ]
+    }
+  },
+  "allOf": [
+    {
+      "if": { "properties": { "status": { "const": "erro" } } },
+      "then": { "required": ["erro"], "properties": { "erro": { "type": "object" } } },
+      "else": { "properties": { "erro": { "type": "null" } } }
+    }
+  ]
+}
