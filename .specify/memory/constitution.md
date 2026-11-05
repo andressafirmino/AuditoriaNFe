@@ -1,5 +1,3 @@
-
-
 # AgenteAuditoriaNFe Constitution
 
 Documento normativo do projeto AuditoriaNFe. Os termos **DEVE**, **NÃO DEVE** e **PODE** indicam,
@@ -312,24 +310,29 @@ relatórios financeiros.
 **Verificação**: testes cobrem chamadas bem-sucedidas, falhas, retentativas e ausência de
 informação de uso do provedor.
 
-### P15 — Memória isolada e governada
+### P15 — Memória e contexto do usuário isolados e governados
 
 **Regra**
 
 - A memória conversacional DEVE ser isolada por usuário e por conversa, e por organização quando
 aplicável.
-- Ela DEVE ter políticas de retenção, expiração e exclusão definidas na especificação.
-- O histórico enviado ao modelo DEVE ter limite configurável.
-- O conteúdo da memória NÃO DEVE ser usado como fonte normativa nem como evidência oficial; o
-conhecimento oficial vem exclusivamente da Api.RAG.
-- A tecnologia de armazenamento (MongoDB ou Redis) DEVE ser definida em ADR antes da
-implementação (DP-01).
+- O contexto do usuário (informações que o agente mantém sobre um usuário entre conversas) DEVE
+ser isolado por usuário, e por organização quando aplicável, e armazenado separadamente do
+histórico conversacional e do conhecimento oficial (seção 4.7).
+- A memória e o contexto do usuário DEVEM ter políticas de retenção, expiração e exclusão
+definidas na especificação.
+- O histórico e o contexto enviados ao modelo DEVEM ter limite configurável.
+- O conteúdo da memória e do contexto do usuário NÃO DEVE ser usado como fonte normativa nem como
+evidência oficial; o conhecimento oficial vem exclusivamente da Api.RAG.
+- O armazenamento DEVE seguir a seção 3.1, com a decisão registrada em ADR antes da
+implementação.
 
-**Justificativa**: o vazamento entre usuários e a confusão entre histórico e norma são riscos
-graves de privacidade e de correção.
+**Justificativa**: o vazamento entre usuários e a confusão entre histórico, perfil e norma são
+riscos graves de privacidade e de correção.
 
-**Verificação**: testes provam que um usuário não acessa a memória de outro; a chave de
-isolamento inclui usuário e conversa; existe ADR aprovado.
+**Verificação**: testes provam que um usuário não acessa a memória nem o contexto de outro; a
+chave de isolamento da memória inclui usuário e conversa, e a do contexto inclui o usuário;
+existe ADR aprovado.
 
 ### P16 — Observabilidade e rastreabilidade de execução
 
@@ -396,10 +399,13 @@ mesmo caso de uso de aplicação.
 - A solução DEVE se chamar AgenteAuditoriaNFe.
 - A solução DEVE utilizar .NET 10 e ASP.NET Core.
 - A integração com LLM DEVE utilizar a OpenAI.
-- A orquestração de ferramentas por Function Calling na Api.Agente DEVE utilizar Semantic Kernel.
+- O agente da Api.Agente DEVE ser construído com o Microsoft Agent Framework, incluindo a
+orquestração de ferramentas por Function Calling, as sessões, os provedores de contexto, o
+middleware, os workflows e a hospedagem A2A. A adoção de outro framework de orquestração de
+agentes DEVE ser justificada em ADR.
 - Vetores DEVEM ser armazenados e consultados em PostgreSQL com PgVector.
 - O controle de consumo e custos DEVE ser persistido em PostgreSQL.
-- A memória conversacional DEVE utilizar MongoDB ou Redis, conforme ADR (DP-01).
+- A memória conversacional e o contexto do usuário DEVEM utilizar MongoDB.
 - Versões específicas de SDKs e bibliotecas DEVEM ser definidas nos planos técnicos, e não nesta
 constitution.
 
@@ -414,9 +420,9 @@ constitution.
 - Orquestrar o fluxo de validação (seção 3.4).
 - Integrar-se à OpenAI.
 - Consultar a Api.RAG como cliente MCP.
-- Executar ferramentas por Function Calling via Semantic Kernel, sob controle de autorização
-(P10).
-- Gerenciar a memória conversacional.
+- Executar ferramentas por Function Calling via Microsoft Agent Framework, sob controle de
+autorização (P10).
+- Gerenciar a memória conversacional e o contexto do usuário.
 - Registrar consumo de tokens e custos.
 - Validar a resposta estruturada do LLM.
 - Expor o agente por servidor A2A.
@@ -447,16 +453,20 @@ Endpoints → Aplicação → Domínio, com a Infraestrutura implementando abstr
 Aplicação ou no Domínio.
 
 
-| Camada         | Responsabilidade                                                                                 | Restrições                                                                                              |
-| -------------- | ------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------- |
-| Endpoints      | HTTP, MCP server, A2A server, autenticação de entrada, mapeamento de contratos                   | NÃO DEVE conter regra de negócio nem acesso a dados                                                     |
-| Aplicação      | Casos de uso, orquestração do fluxo, autorização de ferramentas, políticas                       | NÃO DEVE depender de detalhes de infraestrutura concretos                                               |
-| Domínio        | Entidades, resultados de validação, categorias de achado, regras determinísticas                 | NÃO DEVE depender de ASP.NET Core, Semantic Kernel, SDKs de OpenAI, MCP ou A2A, nem de drivers de banco |
-| Infraestrutura | Persistência, clientes OpenAI, MCP e A2A, Semantic Kernel, armazenamento de memória e de vetores | NÃO DEVE ser referenciada pelo Domínio                                                                  |
+| Camada         | Responsabilidade                                                                                                                                  | Restrições                                                                                                                              |
+| -------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
+| Endpoints      | HTTP, MCP server, A2A server, autenticação de entrada, mapeamento de contratos                                                                    | NÃO DEVE conter regra de negócio nem acesso a dados                                                                                     |
+| Aplicação      | Casos de uso, orquestração do fluxo, agente, ferramentas, provedores de contexto, middleware e workflows, autorização de ferramentas, políticas | NÃO DEVE depender de detalhes de infraestrutura concretos                                                                               |
+| Domínio        | Entidades, resultados de validação, categorias de achado, regras determinísticas                                                                  | NÃO DEVE depender de ASP.NET Core, Microsoft Agent Framework, Microsoft.Extensions.AI, SDKs de OpenAI, MCP ou A2A, nem de drivers de banco |
+| Infraestrutura | Persistência, clientes OpenAI, MCP e A2A, armazenamento de memória, de contexto do usuário e de vetores                                          | NÃO DEVE ser referenciada pelo Domínio                                                                                                  |
 
 
-- SDKs externos (OpenAI, Semantic Kernel, MCP, A2A e drivers de banco) DEVEM ficar confinados à
-Infraestrutura ou a adaptadores das bordas, salvo exceção justificada em ADR.
+- SDKs externos (OpenAI, MCP, A2A e drivers de banco) DEVEM ficar confinados à Infraestrutura ou a
+adaptadores das bordas, salvo exceção justificada em ADR.
+- As abstrações do Microsoft Agent Framework e do Microsoft.Extensions.AI (agentes, sessões,
+provedores de contexto, middleware, ferramentas e workflows) PODEM ser referenciadas pela
+Aplicação. Os conectores concretos desses frameworks com provedores (por exemplo, OpenAI) e com
+protocolos (A2A e MCP) DEVEM ficar na Infraestrutura ou nas bordas.
 - A forma física das camadas (projetos separados ou pastas e namespaces em um projeto) DEVE ser
 definida no primeiro plano técnico (DP-19).
 - O cumprimento das dependências entre camadas PODE ser verificado por testes de arquitetura.
@@ -613,7 +623,8 @@ definida em ADR (DP-15).
 
 ### 4.6 Contrato de ferramentas
 
-Cada ferramenta, incluindo funções do Semantic Kernel e ferramentas MCP, DEVE possuir:
+Cada ferramenta, incluindo as funções expostas ao agente pelo Microsoft Agent Framework e as
+ferramentas MCP, DEVE possuir:
 
 - Nome único e uma responsabilidade única e descrita.
 - Contrato de entrada e de saída documentado e versionado.
@@ -627,13 +638,20 @@ indisponível".
 
 Resultados de ferramentas DEVEM ser tratados como dados não confiáveis (P07).
 
-### 4.7 Memória conversacional
+### 4.7 Memória conversacional e contexto do usuário
 
-- O histórico conversacional e o conhecimento oficial DEVEM ser armazenados e tratados
-separadamente (P15).
+- O histórico conversacional, o contexto do usuário e o conhecimento oficial DEVEM ser
+armazenados e tratados separadamente (P15).
+- O contexto do usuário DEVE conter apenas as informações definidas na especificação, cada uma
+com finalidade declarada para a auditoria (minimização). O contexto geral do usuário pertence ao
+orquestrador chamador; o agente mantém somente o contexto próprio da sua função.
+- O contexto do usuário DEVE ser gravado pelo sistema, a partir de dados verificáveis da execução
+(por exemplo, resultados dos validadores) ou de informação fornecida explicitamente pelo usuário.
+O LLM NÃO DEVE gravar, alterar ou excluir o contexto diretamente.
+- O contexto do usuário enviado ao modelo DEVE ser delimitado como dado não confiável (P07).
 - Dados sensíveis DEVEM ser protegidos conforme a classificação da seção 5.1.
-- A exclusão de uma conversa ou de dados de um usuário DEVE ser suportada conforme a política de
-retenção (DP-13).
+- A consulta, a correção e a exclusão do contexto de um usuário, assim como a exclusão de uma
+conversa ou de dados de um usuário, DEVEM ser suportadas conforme a política de retenção (DP-13).
 
 
 
@@ -655,8 +673,20 @@ repositório nem gravados em logs; DEVEM ser fornecidos por mecanismo seguro de 
 
 ### 5.2 Segurança de entrada
 
-- Todos os endpoints REST, MCP e A2A DEVEM exigir autenticação e autorização, exceto os
-explicitamente públicos (por exemplo, health checks sem dados), conforme ADR (DP-10).
+- Todos os endpoints REST, MCP e A2A DEVEM exigir autenticação e autorização do sistema chamador,
+exceto os explicitamente públicos (por exemplo, health checks sem dados), conforme ADR (DP-10).
+- A autenticação do usuário final PODE ser delegada a um chamador confiável (por exemplo, o
+orquestrador SOFIA ou o simulador), que informa o identificador do usuário na solicitação.
+Nesse modelo:
+  - Somente chamadores autenticados por credencial de serviço PODEM informar o identificador do
+  usuário; solicitações sem credencial válida DEVEM ser rejeitadas antes de qualquer
+  processamento.
+  - O identificador do usuário DEVE ser registrado junto com a identificação do chamador que o
+  informou.
+  - A credencial de serviço DEVE ser fornecida por mecanismo seguro de configuração, DEVE ser
+  rotacionável e NÃO DEVE ser versionada nem gravada em logs.
+  - O isolamento da memória e do contexto do usuário (P15) DEVE usar o identificador informado
+  combinado com a identificação do chamador.
 - O processamento de XML NÃO DEVE permitir DTD nem resolução de entidades externas, e DEVE impor
 limites de tamanho e de profundidade.
 - O tipo do arquivo DEVE ser validado pelo conteúdo, e não apenas pela extensão ou pelo
@@ -755,7 +785,9 @@ limitadas (P08).
 - [ ] As camadas respeitam a seção 3.3, e a complexidade adicional está justificada (P12).
 - [ ] Parâmetros ajustáveis estão externalizados, e a avaliação está registrada (P13).
 - [ ] O consumo e o custo de todas as chamadas, incluindo retentativas, são registrados (P14).
-- [ ] A memória está isolada, com retenção definida (P15).
+- [ ] A memória e o contexto do usuário estão isolados, com retenção definida, e o contexto é
+gravado somente pelo sistema (P15, seção 4.7).
+- [ ] Nenhum endpoint não público aceita solicitações sem credencial do chamador (seção 5.2).
 - [ ] A execução é rastreável por identificador de correlação, sem dados sensíveis em log (P16).
 - [ ] O conjunto de avaliação foi executado quando houve alteração de prompt, modelo ou RAG (P17).
 - [ ] Os testes de integração usam instâncias reais e descartáveis dos bancos (P17).
@@ -797,8 +829,9 @@ Todo desvio DEVE registrar:
 - A aprovação (quem aprovou e quando).
 - O prazo de revisão, quando o desvio for temporário.
 
-Desvios DEVEM ser registrados em ADR ou na seção "Complexity Tracking" do plano técnico. Um desvio
-sem aprovação registrada NÃO DEVE ser incorporado. Desvios temporários vencidos DEVEM ser
+Desvios DEVEM ser registrados em ADR ou na seção "Complexity Tracking" do plano técnico. A aprovação
+DEVE ser registrada no próprio desvio no formato "Aprovado por <nome>, <data>", por aprovador
+definido na DP-20 (seção 9.1). Um desvio sem aprovação registrada NÃO DEVE ser incorporado. Desvios temporários vencidos DEVEM ser
 corrigidos ou reaprovados.
 
 ### 8.4 Alterações desta constitution
@@ -811,7 +844,7 @@ planos e implementações existentes.
   - PATCH: esclarecimento ou redação, sem mudança semântica.
 - As especificações afetadas por uma alteração MAJOR ou MINOR DEVEM ser reavaliadas e, quando
 necessário, atualizadas.
-- Os aprovadores de alterações DEVEM ser definidos conforme DP-20.
+- As alterações DEVEM ser aprovadas pelos aprovadores definidos na DP-20 (seção 9.1).
 
 ### 8.5 Histórico de alterações
 
@@ -819,8 +852,10 @@ necessário, atualizadas.
 | ------ | ---------- | --------- | ------------------------------------- |
 | 1.0.0 | 2026-10-29 | Adoção inicial da constitution | Nenhum (não havia especificações) |
 | 1.1.0 | 2026-10-29 | Regras de repositório GitHub, contêineres Docker, implantação, documentação interativa da API e testes de integração com bancos reais | Nenhum (não havia especificações) |
+| 2.0.0 | 2026-11-04 | Microsoft Agent Framework no lugar do Semantic Kernel (redefinição incompatível da seção 3.1); abstrações do framework permitidas na Aplicação; MongoDB para memória e contexto do usuário (resolve DP-01); contexto do usuário próprio do agente (P15, seção 4.7); autenticação do chamador com usuário informado por chamador confiável (seção 5.2); DP-03 ajustada; DP-27 criada | `001-agente-auditoria-nfe`: os desvios D-01 e D-02 do `plan.md` deixam de existir; `spec.md`, `plan.md`, `research.md`, `data-model.md` e contratos DEVEM ser atualizados para contexto do usuário, autenticação do chamador e DP-27 |
+| 2.1.0 | 2026-11-04 | Resolução da DP-20 (aprovadores, registro da aprovação e local dos ADRs); formato do registro de aprovação de desvios (seção 8.3) | `001-agente-auditoria-nfe`: o `plan.md` DEVE registrar a aprovação dos desvios e dos ADRs; a autoaprovação de PR, contrária à seção 5.3 e à Definition of Done, DEVE ser registrada como desvio |
 
-**Versão**: 1.1.0 | **Ratificada em**: 2026-10-29 | **Última alteração**: 2026-10-29
+**Versão**: 2.1.0 | **Ratificada em**: 2026-10-29 | **Última alteração**: 2026-11-04
 
 ## 9. Decisões pendentes
 
@@ -830,16 +865,15 @@ resolução na etapa indicada.
 
 | ID    | Decisão pendente                                                                                            | Etapa de resolução                                          |
 | ----- | ----------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------- |
-| DP-01 | Armazenamento da memória conversacional: MongoDB ou Redis                                                   | ADR antes do plano técnico da funcionalidade de memória     |
 | DP-02 | Tipos de documento, modelos e versões de layout no escopo (inclusive eventos e formatos não XML)            | Especificação da primeira funcionalidade de validação       |
-| DP-03 | Manuais, notas técnicas e pacotes de schema oficiais a ingerir, com suas versões                            | Especificação de ingestão (Api.RAG)                         |
+| DP-03 | Pacotes de schema oficiais usados na validação, com versões e regra de seleção por vigência; manuais e notas técnicas a ingerir | Pacotes de schema: especificação de cada funcionalidade de validação. Manuais e notas técnicas: especificação de ingestão (Api.RAG) |
 | DP-04 | Regras de negócio determinísticas a implementar e respectivas fontes oficiais                               | Especificação e esclarecimentos de cada funcionalidade      |
 | DP-05 | Modelo OpenAI e parâmetros de execução                                                                      | Plano técnico da Api.Agente                                 |
 | DP-06 | Provedor e modelo de embeddings, dimensão, métrica de distância, índice e estratégia de busca               | ADR e plano técnico da Api.RAG                              |
 | DP-07 | Segmentação, sobreposição, topK, limiares e busca híbrida, com conjunto de avaliação                        | Plano técnico da Api.RAG, com avaliação registrada          |
 | DP-08 | Schema v1 do contrato do LLM e do envelope, com enumeração de status e escala de severidades                | Especificação da funcionalidade de análise                  |
 | DP-09 | Critérios de revisão humana além do mínimo da seção 4.4                                                     | Especificação da funcionalidade de análise                  |
-| DP-10 | Mecanismo de autenticação e autorização, modelo de organização (multi-tenant) e autenticação entre serviços | ADR antes da primeira funcionalidade exposta                |
+| DP-10 | Mecanismo concreto da credencial de serviço do chamador (chave de API ou token), rotação, autorização por chamador, modelo de organização (multi-tenant) e autenticação entre serviços, observada a seção 5.2 | ADR antes da primeira funcionalidade exposta                |
 | DP-11 | Ferramentas externas disponíveis, seus contratos e políticas de autorização                                 | Especificação de cada ferramenta                            |
 | DP-12 | Limites de tamanho, quantidade e formatos de arquivo aceitos                                                | Especificação da funcionalidade de recepção                 |
 | DP-13 | Retenção e exclusão de memória, arquivos, logs e registros de consumo (LGPD)                                | Especificação e ADR                                         |
@@ -849,12 +883,19 @@ resolução na etapa indicada.
 | DP-17 | Versão do protocolo A2A, Agent Card, skills expostas e autenticação                                         | Especificação da funcionalidade A2A                         |
 | DP-18 | Transporte e versão do protocolo MCP entre Api.Agente e Api.RAG                                             | ADR e plano técnico da integração MCP                       |
 | DP-19 | Forma física das camadas e estrutura da solução                                                             | Primeiro plano técnico, com ADR                             |
-| DP-20 | Aprovadores da constitution, dos desvios e dos ADRs; local dos ADRs no repositório                          | Antes da primeira especificação                             |
 | DP-21 | Processamento síncrono ou assíncrono (filas, lotes) para arquivos grandes                                   | Especificação e plano da funcionalidade de recepção         |
 | DP-22 | Fonte, versionamento e atualização da tabela de preços                                                      | Plano técnico de consumo e custos                           |
 | DP-23 | Ferramentas de observabilidade (logs, métricas e tracing)                                                   | Plano técnico inicial                                       |
 | DP-24 | Política de continuidade do fluxo após falha parcial nas etapas 3 a 6                                       | Especificação da funcionalidade de análise                  |
 | DP-25 | Plataforma de implantação das APIs e dependências, atendendo à seção 3.5 (a Vercel não oferece runtime oficial para .NET e só PODE ser considerada para um eventual frontend) | ADR antes da primeira implantação |
 | DP-26 | Ferramenta de CI/CD, checks obrigatórios, regras de proteção de branch e registro de imagens de contêiner | Plano técnico inicial |
+| DP-27 | Contrato definitivo com o orquestrador SOFIA: forma de envio dos XMLs, metadados (usuário, conversa, correlação), credencial de serviço e formato da resposta. Até a resolução, o contrato A2A é uma proposta versionada provisória | Acordo com o responsável pela SOFIA, antes da integração em produção |
+
+### 9.1 Decisões resolvidas
+
+| ID    | Resolução                                                     | Versão |
+| ----- | ------------------------------------------------------------- | ------ |
+| DP-01 | MongoDB para a memória conversacional e o contexto do usuário (seção 3.1); a decisão DEVE estar registrada em ADR antes da implementação | 2.0.0 |
+| DP-20 | Aprovadora única da constitution, dos desvios, dos ADRs e dos PRs: Andressa Firmino (dona do projeto), enquanto for a única mantenedora. A aprovação é registrada como "Aprovado por <nome>, <data>" no ADR, no "Complexity Tracking" ou no histórico desta constitution, e pela aprovação do PR. ADRs ficam em `docs/adr/`, um arquivo por decisão (`NNNN-titulo.md`), com situação (Proposto, Aprovado ou Substituído). A entrada de outra pessoa mantenedora DEVE reabrir esta decisão | 2.1.0 |
 
 

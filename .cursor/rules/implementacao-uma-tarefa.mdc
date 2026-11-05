@@ -1,0 +1,25 @@
+---
+description: Execução do $speckit-implement uma tarefa por vez
+alwaysApply: true
+---
+
+# $speckit-implement: uma tarefa por vez
+
+Esta regra prevalece sobre a execução completa descrita na skill `speckit-implement`.
+
+Ao executar `$speckit-implement` sem uma tarefa explícita nos argumentos:
+
+- Executar somente a primeira tarefa ainda marcada `- [ ]` no `tasks.md` da feature
+  ativa (o `FEATURE_DIR` retornado por `check-prerequisites.ps1`), respeitando a ordem
+  e as dependências.
+- Ao concluir, marcar a tarefa com `[X]`, rodar o build e os testes afetados e relatar
+  o que foi feito, os arquivos alterados e o resultado da verificação.
+- Se a tarefa for a última da fase, conferir também o checkpoint da fase.
+- Parar e aguardar. Não iniciar a próxima tarefa nem fazer commit sem pedido explícito.
+- Se a tarefa falhar, não marcar `[X]`; relatar o erro e parar.
+- Se a próxima tarefa estiver bloqueada por dependência não concluída, informar e parar.
+
+Quando os argumentos indicarem tarefas ou fases (por exemplo `$speckit-implement T005`
+ou `$speckit-implement Fase 1`), executar exatamente o que foi pedido e parar ao final.
+
+Nunca usar `$speckit-tasks` para avançar a implementação: ele regera o `tasks.md`.

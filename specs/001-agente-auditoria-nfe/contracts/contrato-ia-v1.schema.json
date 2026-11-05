@@ -1,0 +1,192 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:agente-auditoria-nfe:contrato-ia:1.0",
+  "title": "ContratoIaV1",
+  "description": "Saída estruturada da análise por IA do AgenteAuditoriaNFe (etapa 7). Compatível com Structured Outputs da OpenAI em modo strict: todas as propriedades são obrigatórias, campos opcionais aceitam null e nenhum objeto aceita propriedades adicionais. Ids de execução, sessão, datas, consumo, resultado geral e contexto do usuário NÃO fazem parte deste contrato (P09, FR-057). A validação semântica (data-model §15) é feita pelo sistema após a validação estrutural.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "versaoContrato",
+    "indicios",
+    "ausenciasEvidencia",
+    "resposta",
+    "foraDeEscopo",
+    "informacaoIndisponivel",
+    "recomendacoes",
+    "resumo"
+  ],
+  "properties": {
+    "versaoContrato": {
+      "type": "string",
+      "enum": ["1.0"],
+      "description": "Versão deste contrato."
+    },
+    "indicios": {
+      "type": "array",
+      "description": "Indícios identificados pela IA (categoria IndicioIa). Nunca alteram achados determinísticos (FR-021).",
+      "items": { "$ref": "#/$defs/Indicio" }
+    },
+    "ausenciasEvidencia": {
+      "type": "array",
+      "description": "Pontos avaliados sem fundamentação disponível (FR-022).",
+      "items": { "$ref": "#/$defs/AusenciaEvidencia" }
+    },
+    "resposta": {
+      "anyOf": [
+        { "$ref": "#/$defs/Resposta" },
+        { "type": "null" }
+      ],
+      "description": "Resposta à pergunta do usuário; null quando a solicitação não tiver pergunta."
+    },
+    "foraDeEscopo": {
+      "type": "boolean",
+      "description": "Verdadeiro quando a pergunta está fora do escopo do agente (ERR-018)."
+    },
+    "informacaoIndisponivel": {
+      "type": "boolean",
+      "description": "Verdadeiro quando a informação pedida não existe na base analisada (ERR-017)."
+    },
+    "recomendacoes": {
+      "type": "array",
+      "description": "Recomendações demonstrativas; a sensibilidade é calculada pelo sistema (FR-035a).",
+      "items": { "$ref": "#/$defs/Recomendacao" }
+    },
+    "resumo": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Resumo textual em português do Brasil (FR-025, NFR-010). Valores monetários só podem aparecer se constarem de algum valoresCitados."
+    }
+  },
+  "$defs": {
+    "Severidade": {
+      "type": "string",
+      "enum": ["Alta", "Media", "Baixa", "Informativa"]
+    },
+    "IdAchado": {
+      "type": "string",
+      "description": "Id (GUID) de um achado do parecer, recebido no contexto da execução.",
+      "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+    },
+    "Evidencia": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["tipo", "chaveAcesso", "caminho", "valor", "regraId", "chunkId", "calculoId"],
+      "properties": {
+        "tipo": {
+          "type": "string",
+          "enum": ["CampoXml", "RegraCatalogo", "TrechoManual", "Calculo"]
+        },
+        "chaveAcesso": {
+          "type": ["string", "null"],
+          "description": "Obrigatório em CampoXml."
+        },
+        "caminho": {
+          "type": ["string", "null"],
+          "description": "Caminho do campo nos dados extraídos; obrigatório em CampoXml."
+        },
+        "valor": {
+          "type": ["string", "null"],
+          "description": "Valor do campo como texto, sem formatação; obrigatório em CampoXml."
+        },
+        "regraId": {
+          "type": ["string", "null"],
+          "description": "Id da regra do catálogo; obrigatório em RegraCatalogo."
+        },
+        "chunkId": {
+          "type": ["string", "null"],
+          "description": "Id do trecho recuperado na execução; obrigatório em TrechoManual (P06)."
+        },
+        "calculoId": {
+          "type": ["string", "null"],
+          "description": "Id de um registro de cálculo da execução; obrigatório em Calculo."
+        }
+      }
+    },
+    "ValorCitado": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["valor", "calculoId", "chaveAcesso", "caminho"],
+      "description": "Valor financeiro citado. DEVE vir de um cálculo registrado (calculoId) ou de um campo extraído (chaveAcesso e caminho) (FR-027).",
+      "properties": {
+        "valor": {
+          "type": "string",
+          "pattern": "^-?[0-9]+(\\.[0-9]+)?$",
+          "description": "Valor decimal com ponto e sem separador de milhar."
+        },
+        "calculoId": { "type": ["string", "null"] },
+        "chaveAcesso": { "type": ["string", "null"] },
+        "caminho": { "type": ["string", "null"] }
+      }
+    },
+    "Indicio": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["descricao", "severidade", "evidencias", "achadosRelacionados"],
+      "properties": {
+        "descricao": { "type": "string", "minLength": 1 },
+        "severidade": { "$ref": "#/$defs/Severidade" },
+        "evidencias": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/Evidencia" }
+        },
+        "achadosRelacionados": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/IdAchado" }
+        }
+      }
+    },
+    "AusenciaEvidencia": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["pontoAvaliado", "motivo"],
+      "properties": {
+        "pontoAvaliado": { "type": "string", "minLength": 1 },
+        "motivo": { "type": "string", "minLength": 1 }
+      }
+    },
+    "DocumentoExcluido": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["chaveAcesso", "motivo"],
+      "properties": {
+        "chaveAcesso": { "type": "string" },
+        "motivo": { "type": "string" }
+      }
+    },
+    "Resposta": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["texto", "valoresCitados", "documentosExcluidos"],
+      "properties": {
+        "texto": { "type": "string", "minLength": 1 },
+        "valoresCitados": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/ValorCitado" }
+        },
+        "documentosExcluidos": {
+          "type": "array",
+          "description": "Documentos excluídos ou incluídos com ressalva nos cálculos citados (FR-031).",
+          "items": { "$ref": "#/$defs/DocumentoExcluido" }
+        }
+      }
+    },
+    "Recomendacao": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["texto", "achadosVinculados", "valoresCitados"],
+      "properties": {
+        "texto": { "type": "string", "minLength": 1 },
+        "achadosVinculados": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/IdAchado" }
+        },
+        "valoresCitados": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/ValorCitado" }
+        }
+      }
+    }
+  }
+}
