@@ -36,6 +36,15 @@ public sealed class FabricaChatClient(
             _ => throw new InvalidOperationException("Ia:Provedor é obrigatório."),
         };
 
+        return Montar(provedor, nomeProvedor, origem);
+    }
+
+    /// <summary>Envolve o provedor com telemetria, registro de consumo e <c>store=false</c>.</summary>
+    public IChatClient Montar(IChatClient provedor, string nomeProvedor, OrigemValoresConsumo origem)
+    {
+        ArgumentNullException.ThrowIfNull(provedor);
+        ArgumentException.ThrowIfNullOrWhiteSpace(nomeProvedor);
+
         return new ChatClientBuilder(provedor)
             .UseOpenTelemetry(logs, NomeFonteTelemetria, telemetria => telemetria.EnableSensitiveData = false)
             .Use(interno => new RegistroConsumoChatClient(interno, gravador, nomeProvedor, origem))
