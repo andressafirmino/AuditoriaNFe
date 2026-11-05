@@ -56,6 +56,7 @@ Copy-Item .env.example .env
 | `A2A__UrlPublica` | `http://localhost:5310` | URL base publicada no Agent Card |
 | `A2A__IdAgente` | `agente-auditoria-nfe` | `idAgente` do card e do resultado; igual ao registry da SOFIA |
 | `A2A__ChamadorPadrao` | `sofia` | `chamadorId` das solicitações A2A (D-05) |
+| `Cors__AllowedOrigins__0` | vazio | Origem de um frontend web autorizado nas rotas `/api/v1` (FR-052e); não é necessária para a SOFIA |
 | `Limites__TamanhoTotalBytes` / `Limites__QuantidadeArquivos` | `5242880` / `20` | FR-004, FR-005 |
 | `ContextoUsuario__RetencaoInatividade` | `90.00:00:00` | FR-060 |
 
@@ -259,6 +260,40 @@ Esperado: `url = http://api-agente:8080/a2a/auditoria-nfe`, e a SOFIA descobre o
 `http://api-agente:8080/.well-known/agent-card.json`. Sem TLS e sem credencial, só em rede local
 isolada (D-05).
 
+Teste de dentro do contêiner da SOFIA (ou de qualquer contêiner na rede), sem `Origin` e sem CORS:
+
+```powershell
+docker run --rm --network auditoria-nfe-net curlimages/curl -s http://api-agente:8080/.well-known/agent-card.json
+```
+
+### 8.7 CORS para frontend web (TS-070, opcional)
+
+CORS só importa para um navegador chamando as rotas `/api/v1` diretamente; a SOFIA pelo backend não
+precisa dele. Por padrão nenhuma origem é permitida. Para autorizar um frontend local, informe a
+origem no `.env` (esquema + host + porta, sem barra final) e recrie o contêiner:
+
+```powershell
+# no .env: Cors__AllowedOrigins__0=http://localhost:4200
+docker compose up -d api-agente
+
+$preflight = @{
+  'Origin'                         = 'http://localhost:4200'
+  'Access-Control-Request-Method'  = 'POST'
+  'Access-Control-Request-Headers' = 'content-type,x-usuario-id,x-chamador-id'
+}
+Invoke-WebRequest -Method Options http://localhost:5310/api/v1/execucoes -Headers $preflight |
+  Select-Object StatusCode, @{ n = 'Allow-Origin'; e = { $_.Headers['Access-Control-Allow-Origin'] } }
+
+$preflight.Origin = 'https://site-nao-autorizado.example'
+Invoke-WebRequest -Method Options http://localhost:5310/api/v1/execucoes -Headers $preflight -SkipHttpErrorCheck |
+  Select-Object StatusCode, @{ n = 'Allow-Origin'; e = { $_.Headers['Access-Control-Allow-Origin'] } }
+```
+
+Esperado (a partir da T089, quando `POST /api/v1/execucoes` existir): a origem configurada recebe
+`Access-Control-Allow-Origin: http://localhost:4200`, sem `Access-Control-Allow-Credentials`; a
+outra origem não recebe o cabeçalho. Agent Card, `/a2a/auditoria-nfe` e `/health/*` nunca recebem
+cabeçalhos CORS. `curl` e o PowerShell não aplicam CORS: o bloqueio só acontece no navegador.
+
 ## 9. Validar a aprovação de recomendações sensíveis (TS-039 a TS-041)
 
 1. Execute pelo canal direto (seção 6) um lote que gere recomendação sensível. Esperado: o parecer
@@ -319,6 +354,9 @@ o P17.
 | `ready` não saudável | MongoDB ou PostgreSQL sem subir | `docker compose ps` e `docker compose logs` |
 | Resultado "Inconclusiva" com ERR-014 | Chave ou modelo OpenAI inválido, ou provedor indisponível | Conferir `OpenAI__ApiKey` e `OpenAI__Modelo` |
 | Recomendações somem após reiniciar | Volume de checkpoints não montado | Conferir `./data/aprovacoes` no compose |
+| API não inicia: "Cors:AllowedOrigins contém uma origem inválida" | Origem com caminho, barra final, curinga ou sem esquema | Usar só esquema + host + porta, por exemplo `http://localhost:4200` |
+| Navegador bloqueia a chamada por CORS | Origem do frontend fora de `Cors__AllowedOrigins__0` ou rota fora de `/api/v1` | Conferir a origem exata exibida no console do navegador; o Agent Card e o A2A não têm CORS |
+| SOFIA em contêiner não alcança o agente | Uso de `localhost` entre contêineres ou redes diferentes | Rede `auditoria-nfe-net` e `http://api-agente:8080` (seção 8.6) |
 
 ## 12. Encerrar
 

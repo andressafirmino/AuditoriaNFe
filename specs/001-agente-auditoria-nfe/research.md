@@ -657,6 +657,22 @@ implementação, aplicáveis aqui:
 Outros padrões reaproveitados: `IChatClient` dublê com roteiro fixo, `WebApplicationFactory`,
 testes de arquitetura, health checks, `SemSegredosTests` e a ordem de tarefas do `tasks.md`.
 
+### R-34 — CORS e conectividade com a SOFIA
+
+- **Decisão**: a integração SOFIA → agente é de servidor para servidor (A2A e REST) e não usa CORS.
+  A política nomeada `SofiaBrowser` (middleware de CORS do ASP.NET Core, sem pacote extra) fica
+  preparada só para as rotas REST `/api/v1`, aplicada com `RequireCors` no grupo de rotas, com
+  origens de `Cors:AllowedOrigins` (vazia por padrão), métodos e cabeçalhos enumerados e sem
+  credenciais de navegador. Agent Card, A2A, saúde e documentação ficam sem CORS.
+- **Justificativa**: o navegador é o único que aplica CORS; habilitá-lo no A2A ou no card não ajuda
+  a SOFIA e amplia a superfície. Política por endpoint evita liberar rotas não previstas. Validar as
+  origens na inicialização evita erros silenciosos (barra final ou caminho nunca casam com o
+  cabeçalho `Origin`).
+- **Conectividade**: no contêiner, Kestrel em todas as interfaces na porta 8080; no host, porta só
+  em `127.0.0.1` (D-05); a SOFIA em contêiner usa o nome do serviço na rede compartilhada.
+- **Alternativas**: não preparar CORS (exigiria mudança de código quando surgir um frontend);
+  política global com `AllowAnyOrigin` (rejeitada: libera qualquer site e todas as rotas).
+
 ## 3. Uso documentado das APIs do Microsoft Agent Framework
 
 Fonte principal: documentação oficial do Microsoft Agent Framework em Microsoft Learn (páginas

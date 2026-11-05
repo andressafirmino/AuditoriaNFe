@@ -48,6 +48,8 @@
   (constitution 2.2.0, ADR-0011 proposto). Na revisão pela skill de implementação A2A: repetição
   idempotente por `idSolicitacao` (FR-043h, ERR-026), papel restrito do agente e cancelamento
   (FR-043i, ERR-027), rastreamento entre agentes (NFR-014) e exemplos em `contracts/exemplos/`.
+  Na revisão pela skill de CORS: integração SOFIA servidor a servidor, sem CORS, e política
+  `SofiaBrowser` preparada só para `/api/v1`, desligada com a lista vazia (FR-052e, TS-070).
 - A autenticação foi adiada pelo desvio temporário D-05 (constitution 5.2); o desvio DEVE ser
   registrado e aprovado na seção "Complexity Tracking" do `plan.md` (constitution 8.3).
 - Os itens de detalhes de implementação seguem desmarcados de propósito: as restrições técnicas

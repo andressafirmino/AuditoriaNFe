@@ -127,6 +127,10 @@ convenção da constitution.
   resultado da execução já existente, sem reprocessar nem consumir IA. Se a execução ainda estiver
   em andamento, responde `status: erro` com ERR-026; se ela tiver falhado, a repetição gera nova
   execução.
+- Q: O agente habilita CORS para a SOFIA? → A: Não para a integração: SOFIA → agente é servidor a
+  servidor. A política `SofiaBrowser` fica preparada só para as rotas REST `/api/v1`, ativada apenas
+  quando `Cors:AllowedOrigins` tiver as origens de um frontend web autorizado; a lista vazia é o
+  padrão.
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -729,6 +733,14 @@ obtém o Agent Card, envia a solicitação e exibe o resultado com os IDs da sol
 - **FR-052b**: Enquanto o desvio D-05 vigorar, o agente SOMENTE PODE ser executado em ambiente local
   de testes, com as portas publicadas apenas na interface local da máquina, e o Agent Card DEVE
   declarar que não há autenticação. Os dados de teste DEVEM ser sintéticos ou anonimizados.
+- **FR-052e**: As chamadas da SOFIA ao agente (A2A e REST) são de servidor para servidor e NÃO
+  DEVEM depender de CORS. O agente DEVE conceder permissão CORS só a navegadores das origens
+  configuradas (`Cors:AllowedOrigins`, esquema + host + porta, sem caminho, barra final ou curinga) e
+  só nas rotas REST `/api/v1`; com a lista vazia (padrão), nenhuma origem recebe permissão. A
+  política NÃO DEVE permitir credenciais de navegador, e origem fora da lista NÃO DEVE receber
+  permissão. Agent Card, endpoint A2A, health checks e documentação da API ficam sem CORS. Origem
+  inválida na configuração DEVE impedir o início do agente. CORS NÃO substitui autenticação: com o
+  fim do D-05, o cabeçalho da credencial entra na política e as rotas exigem a credencial.
 - **FR-053**: O conteúdo dos XMLs e das perguntas DEVE ser tratado como dado; instruções contidas
   nesse conteúdo NÃO DEVEM alterar regras, contrato de saída ou comportamento do agente
   (constitution P07).
@@ -933,6 +945,7 @@ ele PODE executá-lo. Os XMLs de teste DEVEM ser sintéticos ou anonimizados.
 | TS-067 | Duas solicitações A2A com o mesmo nome de usuário (com espaços e maiúsculas diferentes) e uma com outro nome | As duas primeiras usam o mesmo identificador e o mesmo contexto do usuário; a terceira não acessa esse contexto; o nome está na sessão e na execução e não aparece nos logs nem no envio à IA | FR-052d, FR-056 | Não |
 | TS-068 | Solicitação A2A repetida com o mesmo `idSolicitacao`: depois de concluída, durante o processamento, depois de falha e com outro `idExecucao` | Concluída: mesmo resultado, sem nova execução nem consumo de IA; em andamento: `erro` com ERR-026; após falha: nova execução; outro `idExecucao`: ERR-007; duas simultâneas: uma execução só | FR-043h | Não |
 | TS-069 | Solicitação A2A com `traceparent` e documento com instruções ao agente no `infCpl` | O trace continua o recebido; logs com os IDs da SOFIA e sem nome, pergunta ou conteúdo; as instruções do documento não são seguidas (como TS-018) | NFR-014, FR-053 | Não |
+| TS-070 | Preflight `OPTIONS` e requisição a `/api/v1` com origem configurada, com origem não configurada, sem `Origin` e com a lista vazia; preflight ao Agent Card e aos health checks; origem inválida na configuração | Origem configurada: `Access-Control-Allow-Origin` igual à origem, métodos e cabeçalhos permitidos, sem `Allow-Credentials`; demais casos: sem permissão CORS; sem `Origin`: resposta normal; configuração inválida: o agente não inicia | FR-052e | Não |
 
 ## Success Criteria *(mandatory)*
 

@@ -420,5 +420,7 @@ O simulador usa o cliente oficial do perfil v0.3 (`A2A.V0_3`) e só o contrato p
   endereço que a SOFIA alcança (por exemplo `http://api-agente:8080`), porque a SOFIA usa o `url`
   do card como endpoint RPC. HTTP sem TLS só em rede local isolada (D-05); fora dela, HTTPS e a
   credencial de serviço da DP-10.
+- **CORS**: não se aplica. A SOFIA chama o card e o endpoint A2A pelo backend, e essas rotas não
+  emitem cabeçalhos CORS; a política `SofiaBrowser` vale só para as rotas REST `/api/v1` (FR-052e).
 - **Exemplos**: mensagens completas em [exemplos/](./exemplos/), validadas contra os JSON Schemas
   e usadas como fixtures dos testes de contrato.

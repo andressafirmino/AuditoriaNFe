@@ -297,6 +297,7 @@ src/
 │   ├── A2A/                             # Registro do servidor A2A, fábrica do Agent Card, ManipuladorSofiaA2A
 │   │   └── Sofia/                       # DTOs do contrato SOFIA v1.0, validador e mapeadores
 │   ├── Identificacao/                   # X-Usuario-Id / X-Chamador-Id e nome SOFIA → IdentificacaoSolicitante
+│   ├── Seguranca/                       # Guarda do D-05 e política CORS SofiaBrowser (FR-052e)
 │   ├── Erros/                           # Mapeamento ERR-xxx → HTTP e envelope
 │   ├── appsettings.json                 # Sem segredos
 │   └── Dockerfile
@@ -450,6 +451,26 @@ ERR-022/025 → 503, ERR-024 → 429 com `Retry-After`.
 | `GET /openapi/v1.json`, `/swagger`                                                         | Documentação (só `Development`)                                 | constitution 5.2 |
 
 
+As rotas `/api/v1` são mapeadas no grupo criado por `RotasApiV1.MapearApiV1`, que aplica a política
+CORS `SofiaBrowser` (FR-052e). O Agent Card, o endpoint A2A, os health checks e a documentação ficam
+fora do grupo e sem CORS.
+
+**CORS (FR-052e)**:
+
+- **Servidor a servidor primeiro**: a SOFIA chama o agente pelo backend (A2A ou REST), sem CORS. O
+  que essa integração exige é rede, DNS, porta e, com o fim do D-05, a credencial de serviço.
+- **Política `SofiaBrowser`**: origens de `Cors:AllowedOrigins` (vazia por padrão, ou seja, sem
+  permissão a nenhuma origem), métodos `GET`, `POST`, `PUT` e `DELETE`, cabeçalhos `Content-Type`,
+  `X-Usuario-Id` e `X-Chamador-Id`, `Retry-After` exposto, preflight em cache por 10 minutos e sem
+  `AllowCredentials`. Nada de `AllowAnyOrigin` nem `SetIsOriginAllowed`.
+- **Validação na inicialização**: cada origem é `http` ou `https` com host e porta, sem caminho,
+  barra final, curinga ou credenciais na URL; entradas vazias são ignoradas (permitem
+  `Cors__AllowedOrigins__0=` no compose). Origem inválida impede o início do agente.
+- **Pipeline**: `UseRouting` → `UseCors` → `UseRateLimiter`, para o preflight ser respondido antes
+  do limite de taxa e dos filtros de identificação.
+- **Fim do D-05**: `Authorization` entra nos cabeçalhos permitidos, e as rotas exigem a credencial; o
+  CORS continua sem substituir a autenticação.
+
 O canal A2A está em [contracts/sofia-a2a.md](./contracts/sofia-a2a.md) (contrato SOFIA v1.0).
 
 ### Canal A2A (contrato SOFIA v1.0)
@@ -510,6 +531,10 @@ Infraestrutura.
 
 - As portas não conflitam com os outros projetos da máquina (research R-24). O `api-agente` sobe com
 `ASPNETCORE_ENVIRONMENT=Development` e `Seguranca__AutenticacaoHabilitada=false`.
+- Dentro do contêiner, o Kestrel escuta em todas as interfaces na porta 8080
+(`ASPNETCORE_HTTP_PORTS`); no host, a porta é publicada só em `127.0.0.1` (D-05). A SOFIA em
+contêiner usa a rede `auditoria-nfe-net` e `http://api-agente:8080` (contrato §11).
+`Cors__AllowedOrigins__0` é repassado pelo compose, vazio por padrão.
 - **Documentação da API**: Swagger UI sobre o OpenAPI gerado, só em `Development` (research R-20).
 
 
@@ -544,6 +569,7 @@ antes do merge.
 | `Aprovacao:Diretorio`                                                             | `./data/aprovacoes`                                     | FR-035j                        |
 | `A2A:UrlPublica` / `A2A:IdAgente` / `A2A:ChamadorPadrao`                          | `http://localhost:5310` / `agente-auditoria-nfe` / `sofia` | contrato SOFIA, FR-044a, FR-052d |
 | `Seguranca:AutenticacaoHabilitada`                                                | `false` (único valor aceito na v1, só em `Development`) | D-05                           |
+| `Cors:AllowedOrigins`                                                             | lista vazia (nenhuma origem de navegador permitida)     | FR-052e                        |
 | `Persistencia:AplicarMigracoes`                                                   | `true` só no ambiente local                             | research R-16                  |
 | `OpenAI:Modelo`                                                                   | sem padrão                                              | DP-05                          |
 | `Retencao:*` (demais)                                                             | definidos no ADR-0005                                   | DP-13                          |
@@ -556,6 +582,9 @@ Os valores padrão "anonimo" e "nao-informado" são constantes da spec (FR-052c)
 - **Sem autenticação (D-05)**: identificação informada e não verificada; guarda de inicialização que
 recusa subir fora de `Development`; portas só em `127.0.0.1`; Agent Card declarando a ausência de
 autenticação; dados sintéticos. Limitação de taxa por chave de isolamento.
+- **CORS**: só a política `SofiaBrowser` nas rotas `/api/v1`, com origens enumeradas e sem
+credenciais de navegador (FR-052e). CORS não é controle de acesso: chamadas sem `Origin` (backend
+da SOFIA, curl) seguem o pipeline normal.
 - XML: `DtdProcessing.Prohibit`, `XmlResolver = null`, limites de caracteres e profundidade; tipo
 pelo conteúdo; schemas carregados só da pasta do pacote, com SHA-256 conferido.
 - Limites e rate limit antes de processamento custoso; corpo HTTP limitado.
