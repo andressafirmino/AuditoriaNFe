@@ -500,7 +500,8 @@ implementação (ver quickstart).
 ### R-25 — CI e proteção de branch (DP-26)
 
 - **Decisão**: GitHub Actions com job `build-test` (restore, build com avisos como erro, testes com
-  Docker para Testcontainers, sem chave da OpenAI) e job de build da imagem. Proteção da `main`: PR
+  Docker para Testcontainers, sem chave da OpenAI) e job de build da imagem. Branches: features →
+  PR → `dev` (integração) → PR → `main` (publicação). Proteção da `main` e da `dev`: PR
   obrigatório, check `build-test` obrigatório, sem push direto nem force push e **zero aprovações
   obrigatórias** (desvio D-06: o GitHub não permite que o autor aprove o próprio PR, e o projeto tem
   uma única mantenedora). Em troca, a descrição do PR traz um checklist de conformidade com a
@@ -864,7 +865,7 @@ IList<McpClientTool> ferramentas = await cliente.ListToolsAsync();
 | Topologia PostgreSQL (DP-16) | Banco e usuário exclusivos do Api.Agente (R-16) |
 | Tabela de preços (DP-22) | Arquivo versionado preenchido a partir da fonte oficial (R-16) |
 | Observabilidade (DP-23) | OpenTelemetry (R-22) |
-| CI e proteção de branch (DP-26) | GitHub Actions e regras da `main` (R-25) |
+| CI e proteção de branch (DP-26) | GitHub Actions, branches `dev` e `main` protegidas (R-25) |
 | Implantação (DP-25) | Não implantar nesta feature; Vercel só após ADR e fim do D-05 (R-26) |
 | Documentação da API | Swagger UI, só em `Development` (R-20) |
 | Docker e portas | Compose com portas 5310, 27020 e 5436 em `127.0.0.1` (R-24) |

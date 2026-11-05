@@ -17,7 +17,7 @@ Decisões de arquitetura do AgenteAuditoriaNFe, conforme a DP-20 da constitution
 | [0005](./0005-retencao.md) | Retenção de sessões, contexto do usuário, consumo e checkpoints | Aprovado |
 | [0006](./0006-topologia-postgresql.md) | Topologia do PostgreSQL | Aprovado |
 | [0007](./0007-protocolo-a2a.md) | Protocolo A2A, Agent Card e contrato provisório | Aprovado |
-| [0008](./0008-ci-protecao-main.md) | CI e proteção da `main` | Aprovado |
+| [0008](./0008-ci-protecao-main.md) | CI, branches `dev` e `main` e proteção | Aprovado |
 | [0009](./0009-observabilidade-opentelemetry.md) | Observabilidade com OpenTelemetry | Aprovado |
 | [0010](./0010-schemas-xsd-versionados.md) | Schemas XSD oficiais versionados e seleção pela data de referência | Aprovado |
 

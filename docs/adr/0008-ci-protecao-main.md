@@ -1,4 +1,4 @@
-# ADR-0008 — CI e proteção da `main`
+# ADR-0008 — CI, branches `dev` e `main` e proteção
 
 - **Situação**: Aprovado
 - **Data**: 2026-11-04
@@ -16,10 +16,20 @@ mantenedora (DP-20), e o GitHub não permite que o autor aprove o próprio PR.
   - job `build-test`: restore, build com avisos como erro, testes (com Docker para Testcontainers),
     sem chave da OpenAI; a avaliação com OpenAI real (`Categoria=Avaliacao`) fica fora do CI;
   - job de build da imagem Docker.
-- **Proteção da `main`**:
+- **Branches**:
+  - `main` é a branch principal (constitution 3.5) e só recebe publicações, por PR vindo da `dev`;
+  - `dev` é a branch de integração e recebe as features por PR;
+  - cada feature tem branch própria com o nome do Spec Kit (`NNN-nome-da-feature`), criada a partir
+    da `dev`.
+
+  ```text
+  NNN-feature  ──PR──▶  dev  ──PR (publicação)──▶  main
+  ```
+
+- **Proteção da `main` e da `dev`** (mesmas regras nas duas):
   - PR obrigatório;
-  - check `build-test` obrigatório;
-  - sem push direto e sem force push;
+  - check `build-test` obrigatório, assim que o workflow de CI existir;
+  - sem push direto, sem force push e sem exclusão da branch;
   - **zero aprovações obrigatórias** (desvio D-06).
 - **Revisão pela mantenedora**: a descrição do PR traz um checklist de conformidade com a
   constitution (princípios, desvios, testes, segredos). A mantenedora preenche o checklist e comenta
@@ -30,6 +40,9 @@ mantenedora (DP-20), e o GitHub não permite que o autor aprove o próprio PR.
 ## Consequências
 
 - Não há segundo revisor enquanto vigorar o D-06; o checklist e o CI são a única barreira.
+- A `main` só muda em publicações; a `dev` acumula as features já revisadas.
+- Branches de feature podem receber force push enquanto o PR estiver aberto (por exemplo, para
+  corrigir mensagens de commit), nunca a `dev` nem a `main`.
 - Quando outra pessoa entrar como mantenedora, a proteção passa a exigir uma aprovação, o D-06 é
   encerrado e a DP-20 é reaberta.
 
@@ -37,6 +50,8 @@ mantenedora (DP-20), e o GitHub não permite que o autor aprove o próprio PR.
 
 - Exigir uma aprovação: impediria qualquer merge.
 - Bypass de administrador: anularia a proteção para todos os PRs.
+- Só a `main`, sem `dev`: rejeitado pela mantenedora em 2026-11-04; ela quer separar integração e
+  publicação.
 
 ## Referências
 
