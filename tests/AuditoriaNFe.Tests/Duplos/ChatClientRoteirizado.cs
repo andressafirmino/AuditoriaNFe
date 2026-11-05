@@ -25,12 +25,15 @@ public sealed class ChatClientRoteirizado(string modelo = ChatClientRoteirizado.
 
     public int Restantes => _roteiro.Count;
 
-    /// <summary>Resposta com o texto dado (válido ou não para o contrato) e o uso informado ou ausente.</summary>
-    public ChatClientRoteirizado Responder(string texto, UsageDetails? uso = null)
+    /// <summary>
+    /// Resposta com o texto dado (válido ou não para o contrato) e o uso informado ou ausente;
+    /// <paramref name="modeloResposta"/> substitui o modelo padrão nesta resposta.
+    /// </summary>
+    public ChatClientRoteirizado Responder(string texto, UsageDetails? uso = null, string? modeloResposta = null)
     {
         _roteiro.Enqueue(_ => Task.FromResult(new ChatResponse(new ChatMessage(ChatRole.Assistant, texto))
         {
-            ModelId = modelo,
+            ModelId = modeloResposta ?? modelo,
             FinishReason = ChatFinishReason.Stop,
             Usage = uso,
         }));
