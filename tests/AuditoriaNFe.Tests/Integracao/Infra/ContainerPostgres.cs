@@ -36,7 +36,7 @@ public sealed class ContainerPostgres : IAsyncLifetime
     public string ConnectionString =>
         $"Host={_container.Hostname};Port={_container.GetMappedPublicPort(Porta)};Database=auditoria_agente;Username={_usuarioApp};Password={_senhaApp}";
 
-    public async ValueTask InitializeAsync() => await _container.StartAsync();
+    public async ValueTask InitializeAsync() => await LogContainer.IniciarAsync(_container, Imagem);
 
     public Task PararAsync() => _container.StopAsync();
 

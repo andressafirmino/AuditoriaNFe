@@ -35,7 +35,7 @@ public sealed class ContainerMongo : IAsyncLifetime
     public string ConnectionString =>
         $"mongodb://{_usuarioApp}:{_senhaApp}@{_container.Hostname}:{_container.GetMappedPublicPort(Porta)}/auditoria_agente?authSource=auditoria_agente";
 
-    public async ValueTask InitializeAsync() => await _container.StartAsync();
+    public async ValueTask InitializeAsync() => await LogContainer.IniciarAsync(_container, Imagem);
 
     public async ValueTask DisposeAsync() => await _container.DisposeAsync();
 }
