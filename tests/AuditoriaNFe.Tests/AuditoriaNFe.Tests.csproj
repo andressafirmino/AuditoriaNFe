@@ -1,0 +1,28 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <OutputType>Exe</OutputType>
+    <IsPackable>false</IsPackable>
+    <IsTestProject>true</IsTestProject>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\AuditoriaNFe.Domain\AuditoriaNFe.Domain.csproj" />
+    <ProjectReference Include="..\..\src\AuditoriaNFe.Application\AuditoriaNFe.Application.csproj" />
+    <ProjectReference Include="..\..\src\AuditoriaNFe.Infrastructure\AuditoriaNFe.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\src\Api.Agente\Api.Agente.csproj" />
+    <ProjectReference Include="..\..\src\Sofia.Simulator\Sofia.Simulator.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Using Include="Xunit" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="xunit.v3" Version="4.0.2" />
+  </ItemGroup>
+
+</Project>
