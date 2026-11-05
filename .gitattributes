@@ -1,0 +1,2 @@
+# Os XSDs oficiais são conferidos byte a byte pelo SHA-256 do manifesto: nenhuma conversão de fim de linha.
+src/AuditoriaNFe.Infrastructure/Schemas/NFe/**/*.xsd -text

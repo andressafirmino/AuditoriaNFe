@@ -1,0 +1,899 @@
+{
+  "versao": 1,
+  "geradoEm": "2026-11-04",
+  "namespace": "http://www.portalfiscal.inf.br/nfe",
+  "versaoLeiaute": "4.00",
+  "modelo": "55",
+  "tabelaVigencia": "specs/001-agente-auditoria-nfe/vigencia-pacotes-schema.md",
+  "aprovacao": {
+    "por": "Solicitante da feature",
+    "em": "2026-11-04",
+    "observacao": "Sujeita a ajustes futuros"
+  },
+  "fonteProcNFe": {
+    "arquivo": "PL_009q_NT2025_001_v1.00.zip",
+    "motivo": "Os pacotes da serie PL_010 nao trazem procNFe_v4.00.xsd; o arquivo da serie PL_009 tem o mesmo conteudo em todos os pacotes (difere so no fim de linha)"
+  },
+  "pacotes": [
+    {
+      "ordem": 1,
+      "id": "PL_009_V4_v1_40",
+      "notasTecnicas": "NT 2016.002 v1.40",
+      "vigenciaInicio": "2017-12-04",
+      "vigenciaFim": "2018-01-01",
+      "inicioInferido": true,
+      "fimConvivencia": null,
+      "schemaNFe": "nfe_v4.00.xsd",
+      "schemaNFeProc": "procNFe_v4.00.xsd",
+      "origem": {
+        "arquivo": "PL_009_V4_v1_40.zip",
+        "titulo": "Esquemas XML NF-e - Pacote de Liberação No. 9 (Novo leiaute da NF-e, NT 2016.002 v.1.40) (24/10/2017) (ZIP)",
+        "url": "https://www.nfe.fazenda.gov.br/portal/exibirArquivo.aspx?conteudo=hf4wldv89mQ=",
+        "obtidoEm": "2026-11-04",
+        "sha256": "f1cbe4ef0260fc96643fb2ef5397505b658fe3b44a932a35b526569c0624fdb9"
+      },
+      "arquivos": [
+        {
+          "nome": "nfe_v4.00.xsd",
+          "origem": "PL_009_V4_v1_40.zip",
+          "sha256": "0ac9d4c146b6db779f4b6a531045899b919d42e1bb87eb96d6f692bb14b8b646"
+        },
+        {
+          "nome": "leiauteNFe_v4.00.xsd",
+          "origem": "PL_009_V4_v1_40.zip",
+          "sha256": "fb1882d1aacbede8cc030136a1e8c8aeab5cf0e975d06d7b08d5339efaf0f146"
+        },
+        {
+          "nome": "xmldsig-core-schema_v1.01.xsd",
+          "origem": "PL_009_V4_v1_40.zip",
+          "sha256": "f56744a5f51c03f027de13f39f869307091781a9ef1d91b1ebe14719ce28e1ac"
+        },
+        {
+          "nome": "tiposBasico_v4.00.xsd",
+          "origem": "PL_009_V4_v1_40.zip",
+          "sha256": "387d0fd8f7ae8913dc3793f0ede4967e5547f1199930217669b78c26b795ae61"
+        },
+        {
+          "nome": "procNFe_v4.00.xsd",
+          "origem": "PL_009_V4_v1_40.zip",
+          "sha256": "d61d15303f8ccf77e6e5d77a8153255a6906e0d00385dc5000db19ed3bfa96e0"
+        }
+      ]
+    },
+    {
+      "ordem": 2,
+      "id": "PL_009_V4_2017_001",
+      "notasTecnicas": "NT 2017.001 v1.00",
+      "vigenciaInicio": "2018-01-02",
+      "vigenciaFim": "2018-06-03",
+      "inicioInferido": false,
+      "fimConvivencia": null,
+      "schemaNFe": "nfe_v4.00.xsd",
+      "schemaNFeProc": "procNFe_v4.00.xsd",
+      "origem": {
+        "arquivo": "PL_009_V4_2017_001.zip",
+        "titulo": "Esquemas XML NF-e - Pacote de Liberação No. 9 (Novas validações do GTIN, Nota Técnica 2017.001 v.1.00) (06/12/2017) (ZIP)",
+        "url": "https://www.nfe.fazenda.gov.br/portal/exibirArquivo.aspx?conteudo=WBAhKoN7XPo=",
+        "obtidoEm": "2026-11-04",
+        "sha256": "932ae74e0067f12d542f03d9690bbbebf9437e9e2a7dab1a9d28046514d07623"
+      },
+      "arquivos": [
+        {
+          "nome": "nfe_v4.00.xsd",
+          "origem": "PL_009_V4_2017_001.zip",
+          "sha256": "0ac9d4c146b6db779f4b6a531045899b919d42e1bb87eb96d6f692bb14b8b646"
+        },
+        {
+          "nome": "leiauteNFe_v4.00.xsd",
+          "origem": "PL_009_V4_2017_001.zip",
+          "sha256": "1ff605edf498d459acec4a05cfa37adc020cfd8c0b47517430d7dc695ba4559b"
+        },
+        {
+          "nome": "xmldsig-core-schema_v1.01.xsd",
+          "origem": "PL_009_V4_2017_001.zip",
+          "sha256": "f56744a5f51c03f027de13f39f869307091781a9ef1d91b1ebe14719ce28e1ac"
+        },
+        {
+          "nome": "tiposBasico_v4.00.xsd",
+          "origem": "PL_009_V4_2017_001.zip",
+          "sha256": "387d0fd8f7ae8913dc3793f0ede4967e5547f1199930217669b78c26b795ae61"
+        },
+        {
+          "nome": "procNFe_v4.00.xsd",
+          "origem": "PL_009_V4_2017_001.zip",
+          "sha256": "d61d15303f8ccf77e6e5d77a8153255a6906e0d00385dc5000db19ed3bfa96e0"
+        }
+      ]
+    },
+    {
+      "ordem": 3,
+      "id": "PL_009_V4_NT_2016_002_v1_50",
+      "notasTecnicas": "NT 2016.002 v1.50/v1.51",
+      "vigenciaInicio": "2018-06-04",
+      "vigenciaFim": "2018-07-22",
+      "inicioInferido": false,
+      "fimConvivencia": null,
+      "schemaNFe": "nfe_v4.00.xsd",
+      "schemaNFeProc": "procNFe_v4.00.xsd",
+      "origem": {
+        "arquivo": "PL_009_V4_NT_2016_002_v1_50.zip",
+        "titulo": "Esquemas XML NF-e - Pacote de Liberação No. 9 (Novo leiaute da NF-e, NT 2016.002 v.1.50) (27/04/2017) (ZIP)",
+        "url": "https://www.nfe.fazenda.gov.br/portal/exibirArquivo.aspx?conteudo=51K60G9B2Ss=",
+        "obtidoEm": "2026-11-04",
+        "sha256": "771a70f53877537797e4bf784615bd78910804a1165992e4b83db70ba4a0f15e"
+      },
+      "arquivos": [
+        {
+          "nome": "nfe_v4.00.xsd",
+          "origem": "PL_009_V4_NT_2016_002_v1_50.zip",
+          "sha256": "0ac9d4c146b6db779f4b6a531045899b919d42e1bb87eb96d6f692bb14b8b646"
+        },
+        {
+          "nome": "leiauteNFe_v4.00.xsd",
+          "origem": "PL_009_V4_NT_2016_002_v1_50.zip",
+          "sha256": "e636eeb43cb8c1e0eccf346dab2e0e0fc4da204c153ff213af85edf334964efa"
+        },
+        {
+          "nome": "xmldsig-core-schema_v1.01.xsd",
+          "origem": "PL_009_V4_NT_2016_002_v1_50.zip",
+          "sha256": "f56744a5f51c03f027de13f39f869307091781a9ef1d91b1ebe14719ce28e1ac"
+        },
+        {
+          "nome": "tiposBasico_v4.00.xsd",
+          "origem": "PL_009_V4_NT_2016_002_v1_50.zip",
+          "sha256": "ea470ae432e6662c64477d1935e641cdb2279ab487f8bfda6c0eafce6c28d840"
+        },
+        {
+          "nome": "procNFe_v4.00.xsd",
+          "origem": "PL_009_V4_NT_2016_002_v1_50.zip",
+          "sha256": "d61d15303f8ccf77e6e5d77a8153255a6906e0d00385dc5000db19ed3bfa96e0"
+        }
+      ]
+    },
+    {
+      "ordem": 4,
+      "id": "PL_009_V4_NT_2016_002_v1_60b",
+      "notasTecnicas": "NT 2016.002 v1.60",
+      "vigenciaInicio": "2018-07-23",
+      "vigenciaFim": "2019-05-06",
+      "inicioInferido": false,
+      "fimConvivencia": null,
+      "schemaNFe": "nfe_v4.00.xsd",
+      "schemaNFeProc": "procNFe_v4.00.xsd",
+      "origem": {
+        "arquivo": "PL_009_V4_NT_2016_002_v1_60b.zip",
+        "titulo": "Esquemas XML NF-e - Pacote de Liberação No. 9 (Novo leiaute da NF-e, NT 2016.002 v.1.60 - b). Publicado em 02/07/2018.",
+        "url": "https://www.nfe.fazenda.gov.br/portal/exibirArquivo.aspx?conteudo=jnRfCzspXrU=",
+        "obtidoEm": "2026-11-04",
+        "sha256": "c87c081bbb875a123d6f792f82984cbd9aa26864934190a59e90b83bb8cde384"
+      },
+      "arquivos": [
+        {
+          "nome": "nfe_v4.00.xsd",
+          "origem": "PL_009_V4_NT_2016_002_v1_60b.zip",
+          "sha256": "0ac9d4c146b6db779f4b6a531045899b919d42e1bb87eb96d6f692bb14b8b646"
+        },
+        {
+          "nome": "leiauteNFe_v4.00.xsd",
+          "origem": "PL_009_V4_NT_2016_002_v1_60b.zip",
+          "sha256": "f9b64b46a6c65d4c18f1a19b83d29b00f7056c01e9d20e7edcc444307a2a8005"
+        },
+        {
+          "nome": "xmldsig-core-schema_v1.01.xsd",
+          "origem": "PL_009_V4_NT_2016_002_v1_60b.zip",
+          "sha256": "f56744a5f51c03f027de13f39f869307091781a9ef1d91b1ebe14719ce28e1ac"
+        },
+        {
+          "nome": "tiposBasico_v4.00.xsd",
+          "origem": "PL_009_V4_NT_2016_002_v1_60b.zip",
+          "sha256": "ea470ae432e6662c64477d1935e641cdb2279ab487f8bfda6c0eafce6c28d840"
+        },
+        {
+          "nome": "procNFe_v4.00.xsd",
+          "origem": "PL_009_V4_NT_2016_002_v1_60b.zip",
+          "sha256": "d61d15303f8ccf77e6e5d77a8153255a6906e0d00385dc5000db19ed3bfa96e0"
+        }
+      ]
+    },
+    {
+      "ordem": 5,
+      "id": "PL_009_V4_00_NT_2018_005_v1.20a",
+      "notasTecnicas": "NT 2018.005 v1.20",
+      "vigenciaInicio": "2019-05-07",
+      "vigenciaFim": "2019-09-01",
+      "inicioInferido": false,
+      "fimConvivencia": null,
+      "schemaNFe": "nfe_v4.00.xsd",
+      "schemaNFeProc": "procNFe_v4.00.xsd",
+      "origem": {
+        "arquivo": "PL_009_V4_00_NT_2018_005_v1.20a.zip",
+        "titulo": "Esquemas XML NF-e/NFC-e - Pacote de Liberação No. 9 (Novo leiaute da NF-e, NT 2018.005 v.1.20). Publicado em 15/03/2019.",
+        "url": "https://www.nfe.fazenda.gov.br/portal/exibirArquivo.aspx?conteudo=WYFlPpo9Mxg=",
+        "obtidoEm": "2026-11-04",
+        "sha256": "b04b0c737e48f05646f429ecefd47e630869458ee2158b0ec046d136da964d26"
+      },
+      "arquivos": [
+        {
+          "nome": "nfe_v4.00.xsd",
+          "origem": "PL_009_V4_00_NT_2018_005_v1.20a.zip",
+          "sha256": "0ac9d4c146b6db779f4b6a531045899b919d42e1bb87eb96d6f692bb14b8b646"
+        },
+        {
+          "nome": "leiauteNFe_v4.00.xsd",
+          "origem": "PL_009_V4_00_NT_2018_005_v1.20a.zip",
+          "sha256": "4570f5288b8e28e9bd74fd066bd12af28caaf06b58d25f6ed637554f7a4d2620"
+        },
+        {
+          "nome": "xmldsig-core-schema_v1.01.xsd",
+          "origem": "PL_009_V4_00_NT_2018_005_v1.20a.zip",
+          "sha256": "f56744a5f51c03f027de13f39f869307091781a9ef1d91b1ebe14719ce28e1ac"
+        },
+        {
+          "nome": "tiposBasico_v4.00.xsd",
+          "origem": "PL_009_V4_00_NT_2018_005_v1.20a.zip",
+          "sha256": "ea470ae432e6662c64477d1935e641cdb2279ab487f8bfda6c0eafce6c28d840"
+        },
+        {
+          "nome": "procNFe_v4.00.xsd",
+          "origem": "PL_009_V4_00_NT_2018_005_v1.20a.zip",
+          "sha256": "d61d15303f8ccf77e6e5d77a8153255a6906e0d00385dc5000db19ed3bfa96e0"
+        }
+      ]
+    },
+    {
+      "ordem": 6,
+      "id": "PL_009_V4_00_NT_2019_001_v1.20a",
+      "notasTecnicas": "NT 2019.001 v1.20",
+      "vigenciaInicio": "2019-09-02",
+      "vigenciaFim": "2021-04-04",
+      "inicioInferido": false,
+      "fimConvivencia": null,
+      "schemaNFe": "nfe_v4.00.xsd",
+      "schemaNFeProc": "procNFe_v4.00.xsd",
+      "origem": {
+        "arquivo": "PL_009_V4_00_NT_2019_001_v1.20a.zip",
+        "titulo": "Esquemas XML NF-e/NFC-e - Pacote de Liberação No. 9 (Novo leiaute da NF-e, NT 2019.001 v.1.20a). Publicado em 20/08/2019.",
+        "url": "https://www.nfe.fazenda.gov.br/portal/exibirArquivo.aspx?conteudo=0x80//g/gwI=",
+        "obtidoEm": "2026-11-04",
+        "sha256": "44139c6c1566935e20e20f561cf7f3177f02afdc9ba15dcb3cc0fd3b7ba4388b"
+      },
+      "arquivos": [
+        {
+          "nome": "nfe_v4.00.xsd",
+          "origem": "PL_009_V4_00_NT_2019_001_v1.20a.zip",
+          "sha256": "0ac9d4c146b6db779f4b6a531045899b919d42e1bb87eb96d6f692bb14b8b646"
+        },
+        {
+          "nome": "leiauteNFe_v4.00.xsd",
+          "origem": "PL_009_V4_00_NT_2019_001_v1.20a.zip",
+          "sha256": "7898341be437ac559a6a2d5f8b7ff513106d9d3358d37ebc0994ea15007f5caa"
+        },
+        {
+          "nome": "xmldsig-core-schema_v1.01.xsd",
+          "origem": "PL_009_V4_00_NT_2019_001_v1.20a.zip",
+          "sha256": "f56744a5f51c03f027de13f39f869307091781a9ef1d91b1ebe14719ce28e1ac"
+        },
+        {
+          "nome": "tiposBasico_v4.00.xsd",
+          "origem": "PL_009_V4_00_NT_2019_001_v1.20a.zip",
+          "sha256": "ea470ae432e6662c64477d1935e641cdb2279ab487f8bfda6c0eafce6c28d840"
+        },
+        {
+          "nome": "procNFe_v4.00.xsd",
+          "origem": "PL_009_V4_00_NT_2019_001_v1.20a.zip",
+          "sha256": "d61d15303f8ccf77e6e5d77a8153255a6906e0d00385dc5000db19ed3bfa96e0"
+        }
+      ]
+    },
+    {
+      "ordem": 7,
+      "id": "PL_009c_V4_00_NT_2020_006_v1.20",
+      "notasTecnicas": "NT 2020.006 v1.00",
+      "vigenciaInicio": "2021-04-05",
+      "vigenciaFim": "2021-08-31",
+      "inicioInferido": false,
+      "fimConvivencia": null,
+      "schemaNFe": "nfe_v4.00.xsd",
+      "schemaNFeProc": "procNFe_v4.00.xsd",
+      "origem": {
+        "arquivo": "PL_009c_V4_00_NT_2020_006_v1.20.zip",
+        "titulo": "Esquemas XML NF-e/NFC-e - Pacote de Liberação nº 9 (novo Leiaute da NF-e, NT 2020.006 v.1.20) Válido de 05/04/2021 a 31/08/2021. Publicado em 25/03/2021.",
+        "url": "https://www.nfe.fazenda.gov.br/portal/exibirArquivo.aspx?conteudo=VL30zMPQQCY=",
+        "obtidoEm": "2026-11-04",
+        "sha256": "3059541dcb4e5d204a9d6d56971219f4f3d91c03875580f3f4734d92348d1228"
+      },
+      "arquivos": [
+        {
+          "nome": "nfe_v4.00.xsd",
+          "origem": "PL_009c_V4_00_NT_2020_006_v1.20.zip",
+          "sha256": "0ac9d4c146b6db779f4b6a531045899b919d42e1bb87eb96d6f692bb14b8b646"
+        },
+        {
+          "nome": "leiauteNFe_v4.00.xsd",
+          "origem": "PL_009c_V4_00_NT_2020_006_v1.20.zip",
+          "sha256": "d9348e9f8f15d509839c8b0a06271c1f493750091583215bd3e5664b7b8aa9cb"
+        },
+        {
+          "nome": "xmldsig-core-schema_v1.01.xsd",
+          "origem": "PL_009c_V4_00_NT_2020_006_v1.20.zip",
+          "sha256": "f56744a5f51c03f027de13f39f869307091781a9ef1d91b1ebe14719ce28e1ac"
+        },
+        {
+          "nome": "tiposBasico_v4.00.xsd",
+          "origem": "PL_009c_V4_00_NT_2020_006_v1.20.zip",
+          "sha256": "ea470ae432e6662c64477d1935e641cdb2279ab487f8bfda6c0eafce6c28d840"
+        },
+        {
+          "nome": "procNFe_v4.00.xsd",
+          "origem": "PL_009c_V4_00_NT_2020_006_v1.20.zip",
+          "sha256": "d61d15303f8ccf77e6e5d77a8153255a6906e0d00385dc5000db19ed3bfa96e0"
+        }
+      ]
+    },
+    {
+      "ordem": 8,
+      "id": "PL_009_V4_00_NT_2020_006_v1.20",
+      "notasTecnicas": "NT 2020.006 v1.20",
+      "vigenciaInicio": "2021-09-01",
+      "vigenciaFim": "2021-10-03",
+      "inicioInferido": false,
+      "fimConvivencia": null,
+      "schemaNFe": "nfe_v4.00.xsd",
+      "schemaNFeProc": "procNFe_v4.00.xsd",
+      "origem": {
+        "arquivo": "PL_009_V4_00_NT_2020_006_v1.20.zip",
+        "titulo": "Esquemas XML NF-e/NFC-e - Pacote de Liberação nº 9 (novo Leiaute da NF-e, NT 2020.006 v.1.20) Válido a partir de 01/09/2021. Publicado em 17/03/2021. Substituido pelo PL_009f_V4_00_NT_2020_005_v100.zip",
+        "url": "https://www.nfe.fazenda.gov.br/portal/exibirArquivo.aspx?conteudo=TM+OHbWgTOI=",
+        "obtidoEm": "2026-11-04",
+        "sha256": "be222eb8336bfb38faf39af769c3bf221d537a6a844f66fb46bc3281fe56dfd8"
+      },
+      "arquivos": [
+        {
+          "nome": "nfe_v4.00.xsd",
+          "origem": "PL_009_V4_00_NT_2020_006_v1.20.zip",
+          "sha256": "0ac9d4c146b6db779f4b6a531045899b919d42e1bb87eb96d6f692bb14b8b646"
+        },
+        {
+          "nome": "leiauteNFe_v4.00.xsd",
+          "origem": "PL_009_V4_00_NT_2020_006_v1.20.zip",
+          "sha256": "bcc44954d05240f023c0a2f0bd6a50fad1db3e2dce3b32e30048fef964fa67eb"
+        },
+        {
+          "nome": "xmldsig-core-schema_v1.01.xsd",
+          "origem": "PL_009_V4_00_NT_2020_006_v1.20.zip",
+          "sha256": "f56744a5f51c03f027de13f39f869307091781a9ef1d91b1ebe14719ce28e1ac"
+        },
+        {
+          "nome": "tiposBasico_v4.00.xsd",
+          "origem": "PL_009_V4_00_NT_2020_006_v1.20.zip",
+          "sha256": "ea470ae432e6662c64477d1935e641cdb2279ab487f8bfda6c0eafce6c28d840"
+        },
+        {
+          "nome": "procNFe_v4.00.xsd",
+          "origem": "PL_009_V4_00_NT_2020_006_v1.20.zip",
+          "sha256": "d61d15303f8ccf77e6e5d77a8153255a6906e0d00385dc5000db19ed3bfa96e0"
+        }
+      ]
+    },
+    {
+      "ordem": 9,
+      "id": "PL_009h_V4_00_NT_2020_005_v120",
+      "notasTecnicas": "NT 2020.005 v1.20, NT 2020.006, NT 2021.002",
+      "vigenciaInicio": "2021-10-04",
+      "vigenciaFim": "2022-09-11",
+      "inicioInferido": true,
+      "fimConvivencia": null,
+      "schemaNFe": "nfe_v4.00.xsd",
+      "schemaNFeProc": "procNFe_v4.00.xsd",
+      "origem": {
+        "arquivo": "PL_009h_V4_00_NT_2020_005_v120.zip",
+        "titulo": "Esquemas XML NF-e/NFC-e - Pacote de Liberação No. 9 - (Novo leiaute da NF-e - Inclusão de código na lista de serviços). Publicado em 04/10/21.",
+        "url": "https://www.nfe.fazenda.gov.br/portal/exibirArquivo.aspx?conteudo=cY51npryvi4=",
+        "obtidoEm": "2026-11-04",
+        "sha256": "4407f4b1a0b5e2cb019fe0ff897d4701f2a21266b59cd2be38c082262dc26173"
+      },
+      "arquivos": [
+        {
+          "nome": "nfe_v4.00.xsd",
+          "origem": "PL_009h_V4_00_NT_2020_005_v120.zip",
+          "sha256": "0ac9d4c146b6db779f4b6a531045899b919d42e1bb87eb96d6f692bb14b8b646"
+        },
+        {
+          "nome": "leiauteNFe_v4.00.xsd",
+          "origem": "PL_009h_V4_00_NT_2020_005_v120.zip",
+          "sha256": "cd76a2d24f30a9678f80981fab3fd14160a11d0ae68716ce9dffe26f3155c22a"
+        },
+        {
+          "nome": "xmldsig-core-schema_v1.01.xsd",
+          "origem": "PL_009h_V4_00_NT_2020_005_v120.zip",
+          "sha256": "f56744a5f51c03f027de13f39f869307091781a9ef1d91b1ebe14719ce28e1ac"
+        },
+        {
+          "nome": "tiposBasico_v4.00.xsd",
+          "origem": "PL_009h_V4_00_NT_2020_005_v120.zip",
+          "sha256": "ef0aef39d8cf4e07c71e3e7a69d456f099a8b57110c3b2ba29a17b9e39461d65"
+        },
+        {
+          "nome": "procNFe_v4.00.xsd",
+          "origem": "PL_009h_V4_00_NT_2020_005_v120.zip",
+          "sha256": "d61d15303f8ccf77e6e5d77a8153255a6906e0d00385dc5000db19ed3bfa96e0"
+        }
+      ]
+    },
+    {
+      "ordem": 10,
+      "id": "PL_009i_NT2021_004_v100d",
+      "notasTecnicas": "NT 2021.004",
+      "vigenciaInicio": "2022-09-12",
+      "vigenciaFim": "2023-03-29",
+      "inicioInferido": false,
+      "fimConvivencia": null,
+      "schemaNFe": "nfe_v4.00.xsd",
+      "schemaNFeProc": "procNFe_v4.00.xsd",
+      "origem": {
+        "arquivo": "PL_009i_NT2021_004_v100d.zip",
+        "titulo": "Esquemas XML NF-e/NFC-e - Pacote de Liberação nº 9i (Novo leiaute da NF-e, NT 2021.004 v.1.00d). Publicado em 17/05/22",
+        "url": "https://www.nfe.fazenda.gov.br/portal/exibirArquivo.aspx?conteudo=jkJ62OcEpnY=",
+        "obtidoEm": "2026-11-04",
+        "sha256": "7206ff293d06421f1632089e0ff90994a415f5ba0a54f9f361e641c925ad0446"
+      },
+      "arquivos": [
+        {
+          "nome": "nfe_v4.00.xsd",
+          "origem": "PL_009i_NT2021_004_v100d.zip",
+          "sha256": "0ac9d4c146b6db779f4b6a531045899b919d42e1bb87eb96d6f692bb14b8b646"
+        },
+        {
+          "nome": "leiauteNFe_v4.00.xsd",
+          "origem": "PL_009i_NT2021_004_v100d.zip",
+          "sha256": "351bd94a7510c0d293cef6b30f7fbade84e81578298258aaf6dbba80513680e0"
+        },
+        {
+          "nome": "xmldsig-core-schema_v1.01.xsd",
+          "origem": "PL_009i_NT2021_004_v100d.zip",
+          "sha256": "f56744a5f51c03f027de13f39f869307091781a9ef1d91b1ebe14719ce28e1ac"
+        },
+        {
+          "nome": "tiposBasico_v4.00.xsd",
+          "origem": "PL_009i_NT2021_004_v100d.zip",
+          "sha256": "ef0aef39d8cf4e07c71e3e7a69d456f099a8b57110c3b2ba29a17b9e39461d65"
+        },
+        {
+          "nome": "procNFe_v4.00.xsd",
+          "origem": "PL_009i_NT2021_004_v100d.zip",
+          "sha256": "d61d15303f8ccf77e6e5d77a8153255a6906e0d00385dc5000db19ed3bfa96e0"
+        }
+      ]
+    },
+    {
+      "ordem": 11,
+      "id": "PL_009k_NT2023_001_v120",
+      "notasTecnicas": "NT 2023.001, NT 2022.003",
+      "vigenciaInicio": "2023-03-30",
+      "vigenciaFim": "2024-05-05",
+      "inicioInferido": false,
+      "fimConvivencia": null,
+      "schemaNFe": "nfe_v4.00.xsd",
+      "schemaNFeProc": "procNFe_v4.00.xsd",
+      "origem": {
+        "arquivo": "PL_009k_NT2023_001_v120.zip",
+        "titulo": "Esquema XML NF-e/NFC-e - Pacote de Liberação nº 9k (Novo leiaute da NF-e, NT 2023.001 v.1.20). Publicado em 11/04/2023",
+        "url": "https://www.nfe.fazenda.gov.br/portal/exibirArquivo.aspx?conteudo=t/qO0j4mHlU=",
+        "obtidoEm": "2026-11-04",
+        "sha256": "80688b920523307e2cdd8359b03c0df017ccb5210d4cce6f53e4391443ed833f"
+      },
+      "arquivos": [
+        {
+          "nome": "nfe_v4.00.xsd",
+          "origem": "PL_009k_NT2023_001_v120.zip",
+          "sha256": "0ac9d4c146b6db779f4b6a531045899b919d42e1bb87eb96d6f692bb14b8b646"
+        },
+        {
+          "nome": "leiauteNFe_v4.00.xsd",
+          "origem": "PL_009k_NT2023_001_v120.zip",
+          "sha256": "e24c58717e2c73e0109e7f4ce3e643ca00c18373d94ac9a54c6609b0c9ff099a"
+        },
+        {
+          "nome": "xmldsig-core-schema_v1.01.xsd",
+          "origem": "PL_009k_NT2023_001_v120.zip",
+          "sha256": "f56744a5f51c03f027de13f39f869307091781a9ef1d91b1ebe14719ce28e1ac"
+        },
+        {
+          "nome": "tiposBasico_v4.00.xsd",
+          "origem": "PL_009k_NT2023_001_v120.zip",
+          "sha256": "1ab4a4ebb9580a7efb45c9d545a9d3b7316cc965213345f667c86a5c7e56e33f"
+        },
+        {
+          "nome": "procNFe_v4.00.xsd",
+          "origem": "PL_009k_NT2023_001_v120.zip",
+          "sha256": "d61d15303f8ccf77e6e5d77a8153255a6906e0d00385dc5000db19ed3bfa96e0"
+        }
+      ]
+    },
+    {
+      "ordem": 12,
+      "id": "PL_009n_NT2023_004_v101_e_NT2019_001_v162",
+      "notasTecnicas": "NT 2023.004 v1.11, NT 2019.001 v1.62",
+      "vigenciaInicio": "2024-05-06",
+      "vigenciaFim": "2024-09-15",
+      "inicioInferido": false,
+      "fimConvivencia": null,
+      "schemaNFe": "nfe_v4.00.xsd",
+      "schemaNFeProc": "procNFe_v4.00.xsd",
+      "origem": {
+        "arquivo": "PL_009n_NT2023_004_v101_e_NT2019_001_v162.zip",
+        "titulo": "Esquemas XML NF-e/NFC-e - Pacote de Liberação nº 9n (Novo leiaute da NF-e, NT 2023.004 v.1.11 e NT 2019.001 v.1.62). Publicado em 19/03/2024",
+        "url": "https://www.nfe.fazenda.gov.br/portal/exibirArquivo.aspx?conteudo=+1c4qtey+iA=",
+        "obtidoEm": "2026-11-04",
+        "sha256": "8e269cd5d5d60532b709c8a88bf590323b94002efd3a49935fb5fd2db5957a62"
+      },
+      "arquivos": [
+        {
+          "nome": "nfe_v4.00.xsd",
+          "origem": "PL_009n_NT2023_004_v101_e_NT2019_001_v162.zip",
+          "sha256": "0ac9d4c146b6db779f4b6a531045899b919d42e1bb87eb96d6f692bb14b8b646"
+        },
+        {
+          "nome": "leiauteNFe_v4.00.xsd",
+          "origem": "PL_009n_NT2023_004_v101_e_NT2019_001_v162.zip",
+          "sha256": "a2a39a43bbd01184baa03849bad5328da9cde746ec247ba334daf3dae2b5f435"
+        },
+        {
+          "nome": "xmldsig-core-schema_v1.01.xsd",
+          "origem": "PL_009n_NT2023_004_v101_e_NT2019_001_v162.zip",
+          "sha256": "f56744a5f51c03f027de13f39f869307091781a9ef1d91b1ebe14719ce28e1ac"
+        },
+        {
+          "nome": "tiposBasico_v4.00.xsd",
+          "origem": "PL_009n_NT2023_004_v101_e_NT2019_001_v162.zip",
+          "sha256": "1ab4a4ebb9580a7efb45c9d545a9d3b7316cc965213345f667c86a5c7e56e33f"
+        },
+        {
+          "nome": "procNFe_v4.00.xsd",
+          "origem": "PL_009n_NT2023_004_v101_e_NT2019_001_v162.zip",
+          "sha256": "d61d15303f8ccf77e6e5d77a8153255a6906e0d00385dc5000db19ed3bfa96e0"
+        }
+      ]
+    },
+    {
+      "ordem": 13,
+      "id": "PL_009o_NT2024_001_v100",
+      "notasTecnicas": "NT 2024.001",
+      "vigenciaInicio": "2024-09-16",
+      "vigenciaFim": "2025-08-31",
+      "inicioInferido": false,
+      "fimConvivencia": null,
+      "schemaNFe": "nfe_v4.00.xsd",
+      "schemaNFeProc": "procNFe_v4.00.xsd",
+      "origem": {
+        "arquivo": "PL_009o_NT2024_001_v100.zip",
+        "titulo": "Esquema XML NF-e/NFC-e - Pacote de Liberação nº 9o (Novo leiaute da NF-e, NT 2024.001 v.1.00) (ZIP). Publicado em 04/06/2024",
+        "url": "https://www.nfe.fazenda.gov.br/portal/exibirArquivo.aspx?conteudo=yxUPAVPKsmA=",
+        "obtidoEm": "2026-11-04",
+        "sha256": "844d5818976e89eeb719947ad7d5cf409d0a95a482d1135df2f06016ffdd64f2"
+      },
+      "arquivos": [
+        {
+          "nome": "nfe_v4.00.xsd",
+          "origem": "PL_009o_NT2024_001_v100.zip",
+          "sha256": "0ac9d4c146b6db779f4b6a531045899b919d42e1bb87eb96d6f692bb14b8b646"
+        },
+        {
+          "nome": "leiauteNFe_v4.00.xsd",
+          "origem": "PL_009o_NT2024_001_v100.zip",
+          "sha256": "1664321df8c0fd4930affdb359adea4913ad870b2e884bb449e04236b59c2b8e"
+        },
+        {
+          "nome": "xmldsig-core-schema_v1.01.xsd",
+          "origem": "PL_009o_NT2024_001_v100.zip",
+          "sha256": "f56744a5f51c03f027de13f39f869307091781a9ef1d91b1ebe14719ce28e1ac"
+        },
+        {
+          "nome": "tiposBasico_v4.00.xsd",
+          "origem": "PL_009o_NT2024_001_v100.zip",
+          "sha256": "1ab4a4ebb9580a7efb45c9d545a9d3b7316cc965213345f667c86a5c7e56e33f"
+        },
+        {
+          "nome": "procNFe_v4.00.xsd",
+          "origem": "PL_009o_NT2024_001_v100.zip",
+          "sha256": "d61d15303f8ccf77e6e5d77a8153255a6906e0d00385dc5000db19ed3bfa96e0"
+        }
+      ]
+    },
+    {
+      "ordem": 14,
+      "id": "PL_009q_NT2025_001_v1.00",
+      "notasTecnicas": "NT 2025.001",
+      "vigenciaInicio": "2025-09-01",
+      "vigenciaFim": "2025-11-09",
+      "inicioInferido": false,
+      "fimConvivencia": null,
+      "schemaNFe": "nfe_v4.00.xsd",
+      "schemaNFeProc": "procNFe_v4.00.xsd",
+      "origem": {
+        "arquivo": "PL_009q_NT2025_001_v1.00.zip",
+        "titulo": "Esquema XML NF-e/NFC-e - Pacote de Liberação nº 9q (Novo leiaute da NF-e, NT 2025.001 v.1.00) (ZIP). Publicado em 19/05/2025",
+        "url": "https://www.nfe.fazenda.gov.br/portal/exibirArquivo.aspx?conteudo=0qRvxtvKcj4=",
+        "obtidoEm": "2026-11-04",
+        "sha256": "82a26d04a778fc214bf8c6c6e5c65ea577721e32ed5efa9a11a80098b8f9802f"
+      },
+      "arquivos": [
+        {
+          "nome": "nfe_v4.00.xsd",
+          "origem": "PL_009q_NT2025_001_v1.00.zip",
+          "sha256": "3c79d7cdb26be1bc417fa5fc24da56e23de31e1b6003c0a56d26640b1164db3a"
+        },
+        {
+          "nome": "leiauteNFe_v4.00.xsd",
+          "origem": "PL_009q_NT2025_001_v1.00.zip",
+          "sha256": "70499ad19d4c64282ec6a339692f5da84f2b7c57572b2b3b745525bfa1fa5e9a"
+        },
+        {
+          "nome": "xmldsig-core-schema_v1.01.xsd",
+          "origem": "PL_009q_NT2025_001_v1.00.zip",
+          "sha256": "f56744a5f51c03f027de13f39f869307091781a9ef1d91b1ebe14719ce28e1ac"
+        },
+        {
+          "nome": "tiposBasico_v4.00.xsd",
+          "origem": "PL_009q_NT2025_001_v1.00.zip",
+          "sha256": "ca9a0be58e15b3065a1645af21f60b2e18edd6b13b9f5747c5c85e4692ebd13b"
+        },
+        {
+          "nome": "procNFe_v4.00.xsd",
+          "origem": "PL_009q_NT2025_001_v1.00.zip",
+          "sha256": "b7af3072ff7398aa557c42bc6d8198dd3c006b1a6ecaad66bc839a5c34cbcb84"
+        }
+      ]
+    },
+    {
+      "ordem": 15,
+      "id": "PL_010b_NT2025_002_v1.30",
+      "notasTecnicas": "NT 2025.002 v1.30, NT 2024.003, NT 2025.001",
+      "vigenciaInicio": "2025-11-10",
+      "vigenciaFim": "2026-04-05",
+      "inicioInferido": false,
+      "fimConvivencia": null,
+      "schemaNFe": "nfe_v4.00.xsd",
+      "schemaNFeProc": "procNFe_v4.00.xsd",
+      "origem": {
+        "arquivo": "PL_010b_NT2025_002_v1.30.zip",
+        "titulo": "Esquema XML NF-e/NFC-e - Pacote de Liberação nº 010b (Novo leiaute da NF-e, NT 2025.002 v.1.30, NT 2024.003 e NT 2025.001) (ZIP). Publicado em 07/10/2025",
+        "url": "https://www.nfe.fazenda.gov.br/portal/exibirArquivo.aspx?conteudo=zaSePUxCMcs=",
+        "obtidoEm": "2026-11-04",
+        "sha256": "2deaa8d430d0acb47deae06b9b6d1202dbb436baf3d2d3aa834a534a3d6fa1b8"
+      },
+      "arquivos": [
+        {
+          "nome": "nfe_v4.00.xsd",
+          "origem": "PL_010b_NT2025_002_v1.30.zip",
+          "sha256": "66a117aaa78687fdb1355fc32a380ec859f3a98e850d7c4de5a07935eb1a6030"
+        },
+        {
+          "nome": "leiauteNFe_v4.00.xsd",
+          "origem": "PL_010b_NT2025_002_v1.30.zip",
+          "sha256": "160abaa6c7c18e37b8f77a8b4bc1b24ec7ec0654ad27267ad5856d14bc6fb135"
+        },
+        {
+          "nome": "xmldsig-core-schema_v1.01.xsd",
+          "origem": "PL_010b_NT2025_002_v1.30.zip",
+          "sha256": "f56744a5f51c03f027de13f39f869307091781a9ef1d91b1ebe14719ce28e1ac"
+        },
+        {
+          "nome": "tiposBasico_v4.00.xsd",
+          "origem": "PL_010b_NT2025_002_v1.30.zip",
+          "sha256": "63d393d69fb63568e39277d9794348fbe107e1c15d2dbce32fb63b6e41472c6d"
+        },
+        {
+          "nome": "DFeTiposBasicos_v1.00.xsd",
+          "origem": "PL_010b_NT2025_002_v1.30.zip",
+          "sha256": "c1c1f700de03da50c82f3fbf23db7e98929b5d1ee1bdedb4d546e33efa498ee6"
+        },
+        {
+          "nome": "procNFe_v4.00.xsd",
+          "origem": "PL_009q_NT2025_001_v1.00.zip",
+          "sha256": "b7af3072ff7398aa557c42bc6d8198dd3c006b1a6ecaad66bc839a5c34cbcb84"
+        }
+      ]
+    },
+    {
+      "ordem": 16,
+      "id": "PL_010c_NT2022_002v1.30",
+      "notasTecnicas": "NT 2022.002 v1.30",
+      "vigenciaInicio": "2026-04-06",
+      "vigenciaFim": "2026-06-30",
+      "inicioInferido": false,
+      "fimConvivencia": null,
+      "schemaNFe": "nfe_v4.00.xsd",
+      "schemaNFeProc": "procNFe_v4.00.xsd",
+      "origem": {
+        "arquivo": "PL_010c_NT2022_002v1.30.zip",
+        "titulo": "Esquema XML NF-e/NFC-e - Pacote de Liberação nº 010c (NT 2022.002 v.1.30) (ZIP) - (Publicado em 26/03/2026)",
+        "url": "https://www.nfe.fazenda.gov.br/portal/exibirArquivo.aspx?conteudo=8chO69DQYZ8=",
+        "obtidoEm": "2026-11-04",
+        "sha256": "aceb8df3ba5235aea4dcac2502a68ef00c6cd34f1d26cb3f6eebae9d675cd0fc"
+      },
+      "arquivos": [
+        {
+          "nome": "nfe_v4.00.xsd",
+          "origem": "PL_010c_NT2022_002v1.30.zip",
+          "sha256": "66a117aaa78687fdb1355fc32a380ec859f3a98e850d7c4de5a07935eb1a6030"
+        },
+        {
+          "nome": "leiauteNFe_v4.00.xsd",
+          "origem": "PL_010c_NT2022_002v1.30.zip",
+          "sha256": "7d8af488538fe78809088f9c494cb7521ae856982210fd13a25496ccf429c8c1"
+        },
+        {
+          "nome": "xmldsig-core-schema_v1.01.xsd",
+          "origem": "PL_010c_NT2022_002v1.30.zip",
+          "sha256": "f56744a5f51c03f027de13f39f869307091781a9ef1d91b1ebe14719ce28e1ac"
+        },
+        {
+          "nome": "tiposBasico_v4.00.xsd",
+          "origem": "PL_010c_NT2022_002v1.30.zip",
+          "sha256": "63d393d69fb63568e39277d9794348fbe107e1c15d2dbce32fb63b6e41472c6d"
+        },
+        {
+          "nome": "DFeTiposBasicos_v1.00.xsd",
+          "origem": "PL_010c_NT2022_002v1.30.zip",
+          "sha256": "c1c1f700de03da50c82f3fbf23db7e98929b5d1ee1bdedb4d546e33efa498ee6"
+        },
+        {
+          "nome": "procNFe_v4.00.xsd",
+          "origem": "PL_009q_NT2025_001_v1.00.zip",
+          "sha256": "b7af3072ff7398aa557c42bc6d8198dd3c006b1a6ecaad66bc839a5c34cbcb84"
+        }
+      ]
+    },
+    {
+      "ordem": 17,
+      "id": "PL_010d_v1.03",
+      "notasTecnicas": "NT 2026.004 v1.01",
+      "vigenciaInicio": "2026-07-01",
+      "vigenciaFim": "2026-08-02",
+      "inicioInferido": false,
+      "fimConvivencia": null,
+      "schemaNFe": "nfe_v4.00.xsd",
+      "schemaNFeProc": "procNFe_v4.00.xsd",
+      "origem": {
+        "arquivo": "PL_010d_v1.03.zip",
+        "titulo": "Schemas XML NF-e/NFC-e - Pacote de Liberação 010d_v.1.03(ZIP) CNPJ Alfanumérico- NT 2026.004.v.1.01- (Publicado em 10/07/2026)",
+        "url": "Portal NF-e (download manual pelo usuário)",
+        "obtidoEm": "2026-10-29",
+        "sha256": "45ceefe4dfbbfec93958283b650a2f1e1734784f4770d070b9907754de081d9b"
+      },
+      "arquivos": [
+        {
+          "nome": "nfe_v4.00.xsd",
+          "origem": "PL_010d_v1.03.zip",
+          "sha256": "adce3646c13ceb54922ec3142fc1dc45bd4fb839ac35ad583e86c733c07d27df"
+        },
+        {
+          "nome": "leiauteNFe_v4.00.xsd",
+          "origem": "PL_010d_v1.03.zip",
+          "sha256": "69df93e582507d50db581d871655f6fbdc8ae51957cce2292c8f672b13d336f1"
+        },
+        {
+          "nome": "xmldsig-core-schema_v1.01.xsd",
+          "origem": "PL_010d_v1.03.zip",
+          "sha256": "f56744a5f51c03f027de13f39f869307091781a9ef1d91b1ebe14719ce28e1ac"
+        },
+        {
+          "nome": "tiposBasico_v4.00.xsd",
+          "origem": "PL_010d_v1.03.zip",
+          "sha256": "772619c85723e598840667ca66e7298a250442df47eeb94b397d2a333ce62047"
+        },
+        {
+          "nome": "DFeTiposBasicos_v1.00.xsd",
+          "origem": "PL_010d_v1.03.zip",
+          "sha256": "c1c1f700de03da50c82f3fbf23db7e98929b5d1ee1bdedb4d546e33efa498ee6"
+        },
+        {
+          "nome": "procNFe_v4.00.xsd",
+          "origem": "PL_009q_NT2025_001_v1.00.zip",
+          "sha256": "b7af3072ff7398aa557c42bc6d8198dd3c006b1a6ecaad66bc839a5c34cbcb84"
+        }
+      ]
+    },
+    {
+      "ordem": 18,
+      "id": "PL_010e_v1.02",
+      "notasTecnicas": "NT 2025.002 v1.36/v1.40, NT 2026.002, NT 2026.003",
+      "vigenciaInicio": "2026-08-03",
+      "vigenciaFim": "2026-11-15",
+      "inicioInferido": false,
+      "fimConvivencia": null,
+      "schemaNFe": "nfe_v4.00.xsd",
+      "schemaNFeProc": "procNFe_v4.00.xsd",
+      "origem": {
+        "arquivo": "PL_010e_v1.02.zip",
+        "titulo": "Schemas XML NF-e/NFC-e - Pacote de Liberação 010e_v.1.02 (ZIP) - NT 2025.002 v.1.40 , NT 2026.002 v.1.0 e NT 2026.003 v.1.0 - (Publicado em 10/07/2026)",
+        "url": "Portal NF-e (download manual pelo usuário)",
+        "obtidoEm": "2026-10-29",
+        "sha256": "d44ae5aa6a0d1cabf6235d2d2d47b75be5dd87bc6b90a7ec3dcec99c3d41bda1"
+      },
+      "arquivos": [
+        {
+          "nome": "nfe_v4.00.xsd",
+          "origem": "PL_010e_v1.02.zip",
+          "sha256": "adce3646c13ceb54922ec3142fc1dc45bd4fb839ac35ad583e86c733c07d27df"
+        },
+        {
+          "nome": "leiauteNFe_v4.00.xsd",
+          "origem": "PL_010e_v1.02.zip",
+          "sha256": "598c71780cbc6b54f170464bd6d5538c2d01a99d987a1666b662d4e166b84bf7"
+        },
+        {
+          "nome": "xmldsig-core-schema_v1.01.xsd",
+          "origem": "PL_010e_v1.02.zip",
+          "sha256": "f56744a5f51c03f027de13f39f869307091781a9ef1d91b1ebe14719ce28e1ac"
+        },
+        {
+          "nome": "tiposBasico_v4.00.xsd",
+          "origem": "PL_010e_v1.02.zip",
+          "sha256": "772619c85723e598840667ca66e7298a250442df47eeb94b397d2a333ce62047"
+        },
+        {
+          "nome": "DFeTiposBasicos_v1.00.xsd",
+          "origem": "PL_010e_v1.02.zip",
+          "sha256": "7fe1dbd89a1dd80826c5134c2406b7eb5df4fa7a9177c5aa6e72319caba7c6d2"
+        },
+        {
+          "nome": "procNFe_v4.00.xsd",
+          "origem": "PL_009q_NT2025_001_v1.00.zip",
+          "sha256": "b7af3072ff7398aa557c42bc6d8198dd3c006b1a6ecaad66bc839a5c34cbcb84"
+        }
+      ]
+    },
+    {
+      "ordem": 19,
+      "id": "PL_010g_v1.03",
+      "notasTecnicas": "NT 2025.002 v1.50, NT 2026.007, NT 2026.006, NT 2026.008",
+      "vigenciaInicio": "2026-11-16",
+      "vigenciaFim": null,
+      "inicioInferido": false,
+      "fimConvivencia": null,
+      "schemaNFe": "nfe_v4.00.xsd",
+      "schemaNFeProc": "procNFe_v4.00.xsd",
+      "origem": {
+        "arquivo": "PL_010g_v1.03.zip",
+        "titulo": "Schemas XML NF-e - Pacote de Liberação nº 010g v.1.03 - NT 2026.006 v.1.00 e NT 2026.008 v.1.00 (Publicado em 26/10/26)",
+        "url": "https://www.nfe.fazenda.gov.br/portal/exibirArquivo.aspx?conteudo=EQhOQMgipXY=",
+        "obtidoEm": "2026-11-04",
+        "sha256": "b329ecbe7e4c05a41bfbc1527f105defb7047328acfeada7c77e1666da485eaf"
+      },
+      "arquivos": [
+        {
+          "nome": "nfe_v4.00.xsd",
+          "origem": "PL_010g_v1.03.zip",
+          "sha256": "adce3646c13ceb54922ec3142fc1dc45bd4fb839ac35ad583e86c733c07d27df"
+        },
+        {
+          "nome": "leiauteNFe_v4.00.xsd",
+          "origem": "PL_010g_v1.03.zip",
+          "sha256": "e8470f5d85ded3d99010676087907214aef71c9626140b672abbafa72656c0f5"
+        },
+        {
+          "nome": "xmldsig-core-schema_v1.01.xsd",
+          "origem": "PL_010g_v1.03.zip",
+          "sha256": "f56744a5f51c03f027de13f39f869307091781a9ef1d91b1ebe14719ce28e1ac"
+        },
+        {
+          "nome": "tiposBasico_v4.00.xsd",
+          "origem": "PL_010g_v1.03.zip",
+          "sha256": "772619c85723e598840667ca66e7298a250442df47eeb94b397d2a333ce62047"
+        },
+        {
+          "nome": "DFeTiposBasicos_v1.00.xsd",
+          "origem": "PL_010g_v1.03.zip",
+          "sha256": "2da0785a6c70db4f93571187a28514dde715cfd0b0f41e746176fbf3444549f2"
+        },
+        {
+          "nome": "procNFe_v4.00.xsd",
+          "origem": "PL_009q_NT2025_001_v1.00.zip",
+          "sha256": "b7af3072ff7398aa557c42bc6d8198dd3c006b1a6ecaad66bc839a5c34cbcb84"
+        }
+      ]
+    }
+  ]
+}
